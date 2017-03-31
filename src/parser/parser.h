@@ -632,6 +632,7 @@ extern "C"
 
   extern PT_NODE *pt_has_non_groupby_column_node (PARSER_CONTEXT * parser, PT_NODE * node, void *arg,
 						  int *continue_walk);
+  extern PT_NODE *pt_semantic_check_local (PARSER_CONTEXT * parser, PT_NODE * node, void *arg, int *continue_walk);
 #ifdef __cplusplus
 }
 #endif

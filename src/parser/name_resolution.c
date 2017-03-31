@@ -976,6 +976,12 @@ pt_bind_scope (PARSER_CONTEXT * parser, PT_BIND_NAMES_ARG * bind_arg)
 	  table = parser_walk_tree (parser, table, pt_bind_names, bind_arg, pt_bind_names_post, bind_arg);
 	  spec->info.spec.derived_table = table;
 
+	  table = parser_walk_tree (parser, table, NULL, NULL, pt_semantic_check_local, &bind_arg->sc_info);
+	  if (table == NULL)
+	    {
+	      return;
+	    }
+
 	  /* must bind any expr types in table. pt_bind_types requires it. */
 	  save_donot_fold = bind_arg->sc_info->donot_fold;	/* save */
 	  bind_arg->sc_info->donot_fold = true;	/* skip folding */
@@ -9428,6 +9434,16 @@ pt_bind_names_in_cte (PARSER_CONTEXT * parser, PT_NODE * cte_def, PT_BIND_NAMES_
    */
   non_recursive_cte = parser_walk_tree (parser, non_recursive_cte, pt_bind_names, bind_arg,
 					pt_bind_names_post, bind_arg);
+  if (non_recursive_cte == NULL)
+    {
+      goto end;
+    }
+  non_recursive_cte = parser_walk_tree (parser, non_recursive_cte, NULL, NULL, pt_semantic_check_local,
+				        &bind_arg->sc_info);
+  if (non_recursive_cte == NULL)
+    {
+      goto end;
+    }
 
   /* must bind any expr types in non recursive part; required for types binding */
   save_donot_fold = bind_arg->sc_info->donot_fold;	/* save */
