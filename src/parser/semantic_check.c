@@ -12390,7 +12390,7 @@ pt_check_order_by (PARSER_CONTEXT * parser, PT_NODE * query)
     }
 
   /* save original length of select_list */
-  select_list_len = pt_length_of_select_list (select_list, EXCLUDE_HIDDEN_COLUMNS);
+  select_list_len = pt_length_of_select_list (select_list, INCLUDE_HIDDEN_COLUMNS);
   for (order = order_by; order; order = order->next)
     {
       /* get the EXPR */

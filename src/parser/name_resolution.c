@@ -9639,6 +9639,8 @@ pt_get_attr_list_of_derived_table (PARSER_CONTEXT * parser, PT_MISC_TYPE derived
 		col->data_type = parser_copy_tree_list (parser, att->data_type);
 	      }
 
+	    col->is_hidden_column = att->is_hidden_column;
+
 	    as_attr_list = parser_append_node (col, as_attr_list);
 	  }
 	break;
