@@ -609,6 +609,11 @@ fileio_compensate_flush (THREAD_ENTRY * thread_p, int fd, int npage)
 
   if (need_sync)
     {
+      if (thread_p)
+        {
+          thread_p->flush_sync_start = time(NULL);
+        }
+
       fileio_synchronize_all (thread_p, false);
     }
 #endif /* SERVER_MODE */

@@ -3211,6 +3211,7 @@ pgbuf_flush_victim_candidates (THREAD_ENTRY * thread_p, float flush_ratio, PERF_
   bool empty_flushed_bcb_queue = false;
   bool direct_victim_waiters = false;
 #endif /* DEBUG && SERVER_MODE */
+  time_t flush_start, flush_start_curr_page;
 
   er_set (ER_NOTIFICATION_SEVERITY, ARG_FILE_LINE, ER_LOG_FLUSH_VICTIM_STARTED, 0);
   er_log_debug (ARG_FILE_LINE, "pgbuf_flush_victim_candidates: start flush victim candidates\n");
@@ -3338,6 +3339,7 @@ repeat:
 
   /* temporary disable second iteration */
   /* for each victim candidate, do flush task */
+  flush_start = time (NULL);
   for (i = 0; i < victim_count; i++)
     {
       int flushed_pages = 0;
@@ -3394,6 +3396,7 @@ repeat:
 	  continue;
 	}
 
+      flush_start_curr_page = time (NULL);
       if (PGBUF_NEIGHBOR_PAGES > 1)
 	{
 	  error = pgbuf_flush_page_and_neighbors_fb (thread_p, bufptr, &flushed_pages);

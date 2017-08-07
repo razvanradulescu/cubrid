@@ -356,6 +356,8 @@ struct thread_entry
 #if !defined(NDEBUG)
   struct fi_test_item *fi_test_array;
 #endif
+
+  time_t flush_sync_start;
 };
 
 #define DOES_THREAD_RESUME_DUE_TO_SHUTDOWN(thread_p) \
