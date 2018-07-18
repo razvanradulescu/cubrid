@@ -69,6 +69,7 @@
 #include "filter_pred_cache.h"
 #include "slotted_page.h"
 #include "thread_manager.hpp"
+#include "log_generator.hpp"
 #if defined(SERVER_MODE)
 #include "connection_sr.h"
 #include "server_support.h"
@@ -2559,6 +2560,13 @@ boot_restart_server (THREAD_ENTRY * thread_p, bool print_restart, const char *db
       error_code = ER_FAILED;
       goto error;
     }
+
+#if defined (SERVER_MODE)
+  /* initialize global stream and also set it
+   * to all LOG_TDES' log_generator member variable
+   */
+  cubreplication::log_generator::create_stream (0);
+#endif
 
   /* 
    * Remove any database temporary volumes

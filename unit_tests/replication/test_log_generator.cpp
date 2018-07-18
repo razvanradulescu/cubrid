@@ -238,7 +238,7 @@ namespace test_replication
 				    tran_chunk)
 			    + std::string ("O") + std::to_string (tran_obj);
 
-    cubreplication::sbr_repl_entry *sbr = new cubreplication::sbr_repl_entry (statement);
+    cubreplication::sbr_repl_entry *sbr = new cubreplication::sbr_repl_entry (statement, "test_user", "test_sys_prm_ctx");
 
     lg->append_repl_object (sbr);
   }

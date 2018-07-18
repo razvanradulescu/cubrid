@@ -244,6 +244,8 @@ namespace cubreplication
   {
     serializator->pack_int (sbr_repl_entry::ID);
     serializator->pack_large_string (m_statement);
+    serializator->pack_string (m_db_user);
+    serializator->pack_string (m_sys_prm_context);
 
     return NO_ERROR;
   }
@@ -254,6 +256,8 @@ namespace cubreplication
 
     serializator->unpack_int (&entry_type_not_used);
     serializator->unpack_large_string (m_statement);
+    serializator->unpack_string (m_db_user);
+    serializator->unpack_string (m_sys_prm_context);
 
     return NO_ERROR;
   }

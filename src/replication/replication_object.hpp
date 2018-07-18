@@ -55,21 +55,20 @@ namespace cubreplication
   {
     private:
       std::string m_statement;
+      std::string m_db_user;
+      std::string m_sys_prm_context;
 
     public:
       static const int ID = 1;
 
-      sbr_repl_entry ()
-      {
-      };
+      sbr_repl_entry () = default;
+      ~sbr_repl_entry () = default;
 
-      ~sbr_repl_entry ()
+      template<typename STATEMENT_T, typename DB_USER_T, typename SYS_PRM_CTX_T>
+      sbr_repl_entry (STATEMENT_T &&statement, DB_USER_T &&user, SYS_PRM_CTX_T &&sys_prm_ctx) : m_statement(std::forward<STATEMENT_T>(statement)),
+                                                                                                m_db_user(std::forward<DB_USER_T>(user)),
+                                                                                                m_sys_prm_context(std::forward<SYS_PRM_CTX_T>(sys_prm_ctx))
       {
-      };
-
-      sbr_repl_entry (const std::string &str)
-      {
-	set_statement (str);
       };
 
       int apply ();
