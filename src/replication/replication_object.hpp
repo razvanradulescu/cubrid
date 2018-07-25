@@ -65,9 +65,10 @@ namespace cubreplication
       ~sbr_repl_entry () = default;
 
       template<typename STATEMENT_T, typename DB_USER_T, typename SYS_PRM_CTX_T>
-      sbr_repl_entry (STATEMENT_T &&statement, DB_USER_T &&user, SYS_PRM_CTX_T &&sys_prm_ctx) : m_statement(std::forward<STATEMENT_T>(statement)),
-                                                                                                m_db_user(std::forward<DB_USER_T>(user)),
-                                                                                                m_sys_prm_context(std::forward<SYS_PRM_CTX_T>(sys_prm_ctx))
+      sbr_repl_entry (STATEMENT_T &&statement, DB_USER_T &&user,
+		      SYS_PRM_CTX_T &&sys_prm_ctx) : m_statement (std::forward<STATEMENT_T> (statement)),
+	m_db_user (std::forward<DB_USER_T> (user)),
+	m_sys_prm_context (std::forward<SYS_PRM_CTX_T> (sys_prm_ctx))
       {
       };
 
@@ -75,51 +76,128 @@ namespace cubreplication
 
       bool is_equal (const cubpacking::packable_object *other);
 
-      void set_statement (const std::string &str)
+      template<typename STATEMENT_T>
+      inline void set_statement (STATEMENT_T &&str)
       {
-	m_statement = str;
+	m_statement = std::forward<STATEMENT_T> (str);
       };
 
       int pack (cubpacking::packer *serializator);
       int unpack (cubpacking::packer *serializator);
 
-      size_t get_packed_size (cubpacking::packer *serializator);
+      std::size_t get_packed_size (cubpacking::packer *serializator);
   };
 
   class single_row_repl_entry : public replication_object
   {
-    private:
-      REPL_ENTRY_TYPE m_type;
-      std::vector <int> changed_attributes;
-      char m_class_name [SM_MAX_IDENTIFIER_LENGTH + 1];
-      DB_VALUE m_key_value;
-      std::vector <DB_VALUE> m_new_values;
-
     public:
-      static const int ID = 2;
-
-      single_row_repl_entry ()
-      {
-      };
-
-      ~single_row_repl_entry ();
-
-      single_row_repl_entry (const REPL_ENTRY_TYPE m_type, const char *class_name);
-
       int apply ();
 
-      bool is_equal (const cubpacking::packable_object *other);
+      virtual bool is_equal (const cubpacking::packable_object *other);
 
-      void set_class_name (const char *class_name);
+      template<typename CLASS_NAME_T>
+      inline void set_class_name (CLASS_NAME_T &&class_name)
+      {
+	m_class_name = std::forward<CLASS_NAME_T> (class_name);
+      }
 
       void set_key_value (cubthread::entry &thread_entry, DB_VALUE *db_val);
 
-      void copy_and_add_changed_value (cubthread::entry &thread_entry, const int att_id, DB_VALUE *db_val);
+    protected:
+      single_row_repl_entry () = default;
+      virtual ~single_row_repl_entry ();
 
-      int pack (cubpacking::packer *serializator);
-      int unpack (cubpacking::packer *serializator);
+      template<typename CLASS_NAME_T>
+      single_row_repl_entry (const REPL_ENTRY_TYPE type,
+			     CLASS_NAME_T &&class_name) :  m_type (type),
+	m_class_name (std::forward<CLASS_NAME_T> (class_name))
+      {
+      }
 
-      size_t get_packed_size (cubpacking::packer *serializator);
+      virtual int pack (cubpacking::packer *serializator);
+      virtual int unpack (cubpacking::packer *serializator);
+      virtual std::size_t get_packed_size (cubpacking::packer *serializator, std::size_t start_offset = 0);
+
+    private:
+      REPL_ENTRY_TYPE m_type;
+      std::string m_class_name;
+      DB_VALUE m_key_value;
+  };
+
+  class rec_des_row_repl_entry : public single_row_repl_entry
+  {
+    public:
+      static const int ID = 2;
+
+      rec_des_row_repl_entry () = default;
+
+      template<typename CLASS_NAME_T>
+      rec_des_row_repl_entry (REPL_ENTRY_TYPE type,
+			      CLASS_NAME_T &&class_name,
+			      RECDES *rec_des) : single_row_repl_entry (type, std::forward<CLASS_NAME_T> (class_name))
+      {
+	assert (rec_des != NULL);
+
+	m_rec_des.length = rec_des->length;
+	m_rec_des.area_size = rec_des->area_size;
+	m_rec_des.type = rec_des->type;
+
+	m_rec_des.data = (char *) malloc (m_rec_des.length);
+	if (m_rec_des.data == NULL)
+	  {
+	    assert (false);
+	  }
+	memcpy (m_rec_des.data, rec_des->data, m_rec_des.length);
+      }
+      ~rec_des_row_repl_entry ();
+
+      virtual int pack (cubpacking::packer *serializator) override final;
+      virtual int unpack (cubpacking::packer *serializator) override final;
+      virtual std::size_t get_packed_size (cubpacking::packer *serializator) override final;
+
+      virtual bool is_equal (const cubpacking::packable_object *other) override final;
+
+    private:
+      RECDES m_rec_des;
+  };
+
+  class changed_attrs_row_repl_entry : public single_row_repl_entry
+  {
+    public:
+      static const int ID = 3;
+
+      changed_attrs_row_repl_entry () = default;
+
+      template<typename CLASS_NAME_T, typename ATT_INT_VEC_T, typename ATT_VAL_VEC_T>
+      changed_attrs_row_repl_entry (REPL_ENTRY_TYPE type, CLASS_NAME_T &&class_name,
+				    ATT_INT_VEC_T &&changed_attrs,
+				    ATT_VAL_VEC_T &&new_values) : changed_attrs_row_repl_entry (type, std::forward<CLASS_NAME_T> (class_name))
+      {
+	m_changed_attributes = std::forward<ATT_INT_VEC_T> (changed_attrs);
+	m_new_values = std::forward<ATT_VAL_VEC_T> (new_values);
+      }
+
+      template<typename CLASS_NAME_T>
+      changed_attrs_row_repl_entry (REPL_ENTRY_TYPE type,
+				    CLASS_NAME_T &&class_name) : single_row_repl_entry (type, std::forward<CLASS_NAME_T> (class_name))
+      {
+      }
+
+      ~changed_attrs_row_repl_entry ();
+
+      void copy_and_add_changed_value (cubthread::entry &thread_entry,
+				       const int att_id,
+				       DB_VALUE *db_val);
+
+      virtual int pack (cubpacking::packer *serializator) override final;
+      virtual int unpack (cubpacking::packer *serializator) override final;
+      virtual std::size_t get_packed_size (cubpacking::packer *serializator) override final;
+
+      virtual bool is_equal (const cubpacking::packable_object *other) override final;
+
+    private:
+      std::vector <int> m_changed_attributes;
+      std::vector <DB_VALUE> m_new_values;
   };
 
 } /* namespace cubreplication */

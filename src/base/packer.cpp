@@ -512,5 +512,55 @@ namespace cubpacking
     return NO_ERROR;
   }
 
+  std::size_t packer::get_packed_recdes_size (RECDES *recdes, const std::size_t curr_offset)
+  {
+    /* we subtract curr_offset because
+     * the function is used as curr_offset += get_*_size (*, curr_offset)
+     */
+    std::size_t entry_size;
+
+    entry_size = OR_INT_SIZE + recdes->length;
+
+    return DB_ALIGN (curr_offset + entry_size, INT_ALIGNMENT) - curr_offset;
+  }
+
+  int packer::pack_recdes (RECDES *recdes)
+  {
+    int rc = NO_ERROR;
+
+    rc = pack_int (recdes->length);
+    if (rc != NO_ERROR)
+      {
+	assert (false);
+	return rc;
+      }
+    m_ptr = or_pack_stream (m_ptr, recdes->data, recdes->length);
+
+    return NO_ERROR;
+  }
+
+  int packer::unpack_recdes (RECDES *recdes)
+  {
+    int rc = NO_ERROR;
+
+    rc = unpack_int (&recdes->length);
+    if (rc != NO_ERROR)
+      {
+	assert (false);
+	return rc;
+      }
+
+    recdes->data = (char *) malloc (recdes->length);
+    if (recdes->data == NULL)
+      {
+	assert (false);
+	return ER_FAILED;
+      }
+
+    m_ptr = or_unpack_stream (m_ptr, recdes->data, recdes->length);
+
+    return NO_ERROR;
+  }
+
 
 } /* namespace cubpacking */

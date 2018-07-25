@@ -27,6 +27,7 @@
 #ident "$Id$"
 
 #include "memory_alloc.h"
+#include "storage_common.h"
 
 #include <vector>
 #include <string>
@@ -92,6 +93,10 @@ namespace cubpacking
       static size_t get_packed_c_string_size (const char *str, const size_t str_size, const size_t curr_offset);
       int pack_c_string (const char *str, const size_t str_size);
       int unpack_c_string (char *str, const size_t max_str_size);
+
+      static std::size_t get_packed_recdes_size (RECDES *recdes, const size_t curr_offset);
+      int pack_recdes (RECDES *recdes);
+      int unpack_recdes (RECDES *recdes);
 
       const char *get_curr_ptr (void)
       {

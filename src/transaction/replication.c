@@ -311,6 +311,7 @@ repl_log_insert (THREAD_ENTRY * thread_p, const OID * class_oid, const OID * ins
       return NO_ERROR;
     }
 
+#if 1
   /* check the replication log array status, if we need to alloc? */
   if (REPL_LOG_IS_NOT_EXISTS (tran_index)
       && ((error = repl_log_info_alloc (tdes, REPL_LOG_INFO_ALLOC_SIZE, false)) != NO_ERROR))
@@ -452,7 +453,101 @@ repl_log_insert (THREAD_ENTRY * thread_p, const OID * class_oid, const OID * ins
 	  repl_rec->must_flush = LOG_REPL_NEED_FLUSH;
 	}
     }
+#else
+  cubreplication::REPL_ENTRY_TYPE new_rbr_type;
+  cubreplication::single_row_repl_entry * new_rbr;
 
+  switch (rcvindex)
+    {
+    case RVREPL_DATA_INSERT:
+      new_rbr_type = cubreplication::REPL_ENTRY_TYPE::REPL_INSERT;
+      break;
+    case RVREPL_DATA_UPDATE:
+      new_rbr_type = cubreplication::REPL_ENTRY_TYPE::REPL_UPDATE;
+      break;
+    case RVREPL_DATA_DELETE:
+      new_rbr_type = cubreplication::REPL_ENTRY_TYPE::REPL_DELETE;
+      break;
+    default:
+      assert (false);
+    }
+
+  if (log_type == LOG_REPLICATION_DATA)
+    {
+      char *ptr_to_packed_key_value_size = NULL;
+      int packed_key_len = 0;
+
+      if (heap_get_class_name (thread_p, class_oid, &class_name) != NO_ERROR || class_name == NULL)
+	{
+	  ASSERT_ERROR_AND_SET (error);
+	  if (error == NO_ERROR)
+	    {
+	      error = ER_REPL_ERROR;
+	      er_set (ER_WARNING_SEVERITY, ARG_FILE_LINE, ER_REPL_ERROR, 1, "can't get class_name");
+	    }
+	  return error;
+	}
+
+      new_rbr = new cubreplication::single_row_repl_entry (new_rbr_type, class_name);
+      new_rbr->set_key_value (*thread_p, key_dbvalue);
+
+      tdes->replication_log_generator.append_repl_object (new_rbr);
+    }
+#endif
+
+  return error;
+}
+
+int
+repl_log_insert_with_recdes (THREAD_ENTRY * thread_p, const char *class_name,
+			     LOG_RCVINDEX rcvindex, DB_VALUE * key_dbvalue, RECDES * recdes)
+{
+  int tran_index;
+  LOG_TDES *tdes;
+  LOG_REPL_RECORD *repl_rec;
+  char *ptr;
+  int error = NO_ERROR, strlen;
+
+#if defined (SERVER_MODE)
+  tran_index = LOG_FIND_THREAD_TRAN_INDEX (thread_p);
+  tdes = LOG_FIND_TDES (tran_index);
+  if (tdes == NULL)
+    {
+      return ER_FAILED;
+    }
+
+  /* If suppress_replication flag is set, do not write replication log. */
+  if (tdes->suppress_replication != 0)
+    {
+      return NO_ERROR;
+    }
+
+  cubreplication::REPL_ENTRY_TYPE new_rbr_type;
+  cubreplication::single_row_repl_entry * new_rbr;
+
+  switch (rcvindex)
+    {
+    case RVREPL_DATA_INSERT:
+      new_rbr_type = cubreplication::REPL_ENTRY_TYPE::REPL_INSERT;
+      break;
+    case RVREPL_DATA_UPDATE:
+      assert (false);
+      break;
+    case RVREPL_DATA_DELETE:
+      new_rbr_type = cubreplication::REPL_ENTRY_TYPE::REPL_DELETE;
+      break;
+    default:
+      assert (false);
+    }
+
+  char *ptr_to_packed_key_value_size = NULL;
+  int packed_key_len = 0;
+
+  new_rbr = new cubreplication::rec_des_row_repl_entry (new_rbr_type, class_name, recdes);
+  new_rbr->set_key_value (*thread_p, key_dbvalue);
+
+  tdes->replication_log_generator.append_repl_object (new_rbr);
+#endif
   return error;
 }
 
@@ -489,7 +584,7 @@ repl_log_insert_statement (THREAD_ENTRY * thread_p, REPL_INFO_SBR * repl_info)
       return NO_ERROR;
     }
 
-#if 0//arnia
+#if 0				//arnia
   /* check the replication log array status, if we need to alloc? */
   if (REPL_LOG_IS_NOT_EXISTS (tran_index)
       && ((error = repl_log_info_alloc (tdes, REPL_LOG_INFO_ALLOC_SIZE, false)) != NO_ERROR))
@@ -544,7 +639,8 @@ repl_log_insert_statement (THREAD_ENTRY * thread_p, REPL_INFO_SBR * repl_info)
   tdes->cur_repl_record++;
 #else
 #if defined (SERVER_MODE)
-  cubreplication::sbr_repl_entry *new_sbr = new cubreplication::sbr_repl_entry (repl_info->stmt_text, repl_info->db_user, repl_info->sys_prm_context);
+  cubreplication::sbr_repl_entry * new_sbr =
+    new cubreplication::sbr_repl_entry (repl_info->stmt_text, repl_info->db_user, repl_info->sys_prm_context);
 
   tdes->replication_log_generator.append_repl_object (new_sbr);
 #endif
