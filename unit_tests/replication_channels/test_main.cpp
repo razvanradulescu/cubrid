@@ -39,7 +39,8 @@ static int init_thread_system ()
 
   lf_initialize_transaction_systems (MAX_THREADS);
 
-  if (csect_initialize_static_critical_sections () != NO_ERROR)
+  error_code = csect_initialize_static_critical_sections ();
+  if (error_code != NO_ERROR)
     {
       assert (false);
       return error_code;
@@ -65,8 +66,9 @@ static int init_thread_system ()
 static int init ()
 {
   int error_code = NO_ERROR;
+#if !defined (WINDOWS)
   signal (SIGPIPE, SIG_IGN);
-
+#endif
   error_code = er_init ("replication_channels.log", ER_EXIT_DONT_ASK);
   if (error_code != NO_ERROR)
     {
@@ -191,3 +193,4 @@ int main (int argc, char **argv)
 
   return 0;
 }
+

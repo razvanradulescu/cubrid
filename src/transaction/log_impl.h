@@ -55,10 +55,12 @@
 #include "storage_common.h"
 #if defined (SERVER_MODE)
 #include "thread_entry.hpp"
-#include "log_generator.hpp"
 #else // not SERVER_MODE = SA_MODE or CS_MODE
 #include "thread_compat.hpp"
 #endif // not SERVER_MODE = SA_MODE or CS_MODE
+#if defined (SERVER_MODE) || (defined (SA_MODE) && defined (__cplusplus))
+#include "log_generator.hpp"
+#endif // defined (SERVER_MODE) || (defined (SA_MODE) && defined (__cplusplus))
 
 
 #include <assert.h>
@@ -197,8 +199,8 @@ struct log_header
   int avg_nlocks;		/* Average number of object locks */
   DKNPAGES npages;		/* Number of pages in the active log portion. Does not include the log header page. */
   INT8 db_charset;
-  INT8 dummy2;			/* Dummy fields for 8byte align */
-  INT8 dummy3;
+  bool was_copied;		/* set to true for copied database; should be reset on first server start */
+  INT8 dummy3;			/* Dummy fields for 8byte align */
   INT8 dummy4;
   LOG_PAGEID fpageid;		/* Logical pageid at physical location 1 in active log */
   LOG_LSA append_lsa;		/* Current append location */
@@ -252,7 +254,12 @@ struct log_header
      0, 0, 0,					 \
      /* db_charset */				 \
      0,						 \
-     0, 0, 0, 0,				 \
+     /* was_copied */                            \
+     false,                                      \
+     /* dummy INT8 for align */                  \
+     0, 0,                                       \
+     /* fpageid */                               \
+     0,				                 \
      /* append_lsa */                            \
      {NULL_PAGEID, NULL_OFFSET},                 \
      /* chkpt_lsa */                             \
@@ -311,7 +318,12 @@ struct log_header
      0, 0, 0,					 \
      /* db_charset */				 \
      0,						 \
-     0, 0, 0, 0,				 \
+     /* was_copied */                            \
+     false,                                      \
+     /* dummy INT8 for align */                  \
+     0, 0,                                       \
+     /* fpageid */                               \
+     0,				                 \
      /* append_lsa */                            \
      {NULL_PAGEID, NULL_OFFSET},                 \
      /* chkpt_lsa */                             \
@@ -1711,7 +1723,7 @@ struct log_tdes
   int cur_repl_record;		/* # of replication records */
   int append_repl_recidx;	/* index of append replication records */
   int fl_mark_repl_recidx;	/* index of flush marked replication record at first */
-#if 1//arnia
+#if 1				//arnia
   struct log_repl *repl_records;	/* replication records */
 #endif
   LOG_LSA repl_insert_lsa;	/* insert or mvcc update target lsa */
@@ -1746,8 +1758,8 @@ struct log_tdes
 
   LOG_RCV_TDES rcv;
 
-#if defined (SERVER_MODE)
-  cubreplication::log_generator replication_log_generator;
+#if defined (SERVER_MODE) || (defined (SA_MODE) && defined (__cplusplus))
+    cubreplication::log_generator replication_log_generator;
 #endif
 };
 

@@ -29,7 +29,6 @@
 #include "packable_object.hpp"
 #include "dbtype.h"
 #include "storage_common.h"
-#include "thread_compat.hpp"
 #include "dbtype_def.h"
 
 #include <vector>
@@ -42,7 +41,9 @@ namespace cubreplication
   {
     REPL_UPDATE = 0,
     REPL_INSERT,
-    REPL_DELETE
+    REPL_DELETE,
+
+    REPL_UNKNOWN
   };
   typedef enum repl_entry_type REPL_ENTRY_TYPE;
 
@@ -61,7 +62,7 @@ namespace cubreplication
       std::string m_sys_prm_context;
 
     public:
-      static const int ID = 1;
+      static const int PACKING_ID = 1;
 
       sbr_repl_entry () = default;
       ~sbr_repl_entry () = default;
@@ -134,7 +135,7 @@ namespace cubreplication
   class rec_des_row_repl_entry : public single_row_repl_entry
   {
     public:
-      static const int ID = 2;
+      static const int PACKING_ID = 2;
 
       rec_des_row_repl_entry () = default;
 

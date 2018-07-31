@@ -58,13 +58,13 @@ set(THREAD_HEADERS
 
 set(STREAM_SOURCES
   ${BASE_DIR}/cubstream.cpp
-  ${BASE_DIR}/packing_stream.cpp
+  ${BASE_DIR}/multi_thread_stream.cpp
   )
 set (STREAM_HEADERS
   ${BASE_DIR}/bip_buffer.hpp
   ${BASE_DIR}/collapsable_circular_queue.hpp
   ${BASE_DIR}/cubstream.hpp
-  ${BASE_DIR}/packing_stream.hpp
+  ${BASE_DIR}/multi_thread_stream.hpp
   ${BASE_DIR}/stream_entry.hpp
   ${BASE_DIR}/stream_io.hpp
   )
@@ -189,12 +189,12 @@ set(MONITOR_HEADERS
   ${MONITOR_DIR}/monitor_transaction.hpp
 )
 
-set (REPLICATION_SOURCES
-  ${REPLICATION_DIR}/replication_master_senders_manager.cpp
-  )
-
 set (REPLICATION_HEADERS
+  ${REPLICATION_DIR}/log_generator.hpp
+  ${REPLICATION_DIR}/log_consumer.hpp
   ${REPLICATION_DIR}/replication_master_senders_manager.hpp
+  ${REPLICATION_DIR}/replication_object.hpp
+  ${REPLICATION_DIR}/replication_stream_entry.hpp
   )
 
 set(QUERY_SOURCES
@@ -234,11 +234,10 @@ set(OBJECT_SOURCES
 set(REPLICATION_SOURCES
   ${REPLICATION_DIR}/log_consumer.cpp
   ${REPLICATION_DIR}/log_generator.cpp
-  ${REPLICATION_DIR}/master_replication_channel.cpp
   ${REPLICATION_DIR}/replication_object.cpp
+  ${REPLICATION_DIR}/replication_master_senders_manager.cpp  
   ${REPLICATION_DIR}/replication_stream_entry.cpp
-  ${REPLICATION_DIR}/slave_replication_channel.cpp
-  )  
+  )
 
 set(JSP_SOURCES
   ${JSP_DIR}/jsp_sr.c
@@ -318,7 +317,6 @@ SET_SOURCE_FILES_PROPERTIES(
   ${COMPAT_SOURCES}
   ${CONNECTION_SOURCES}
   ${CONNECTION_TCP_SOURCE}
-  ${REPLICATION_SOURCES}
   ${ES_SOURCES}
   ${EXECUTABLE_SOURCES}
   ${HEAPLAYER_SOURCES}
@@ -347,7 +345,6 @@ set (CUBRID_LIB_SOURCES
   ${COMPAT_SOURCES}
   ${CONNECTION_SOURCES}
   ${CONNECTION_TCP_SOURCE}
-  ${REPLICATION_SOURCES}
   ${ES_SOURCES}
   ${EXECUTABLE_SOURCES}
   ${HEAPLAYER_SOURCES}

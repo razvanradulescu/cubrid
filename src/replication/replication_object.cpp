@@ -271,9 +271,11 @@ namespace cubreplication
   {
     int count_new_values = 0;
     int int_val;
+#if defined (SERVER_MODE)
     HL_HEAPID save_heapid;
 
     save_heapid = db_private_set_heapid_to_thread (NULL, 0);
+#endif
     /* create id */
     serializator->unpack_int (&int_val);
 
@@ -292,7 +294,9 @@ namespace cubreplication
 	serializator->unpack_db_value (&val);
       }
 
+#if defined (SERVER_MODE)
     db_private_set_heapid_to_thread (NULL, save_heapid);
+#endif
 
     return NO_ERROR;
   }
