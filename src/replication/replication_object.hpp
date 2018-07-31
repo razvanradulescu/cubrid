@@ -30,9 +30,10 @@
 #include "dbtype.h"
 #include "storage_common.h"
 #include "thread_compat.hpp"
+#include "dbtype_def.h"
+
 #include <vector>
 #include <string>
-
 
 namespace cubreplication
 {
@@ -49,6 +50,7 @@ namespace cubreplication
   {
     public:
       virtual int apply (void) = 0;
+      virtual void log_me (const char *additional_msg) = 0;
   };
 
   class sbr_repl_entry : public replication_object
@@ -86,6 +88,8 @@ namespace cubreplication
       int unpack (cubpacking::packer *serializator);
 
       std::size_t get_packed_size (cubpacking::packer *serializator);
+
+      virtual void log_me (const char *additional_msg) override final;
   };
 
   class single_row_repl_entry : public replication_object
@@ -118,10 +122,13 @@ namespace cubreplication
       virtual int unpack (cubpacking::packer *serializator);
       virtual std::size_t get_packed_size (cubpacking::packer *serializator, std::size_t start_offset = 0);
 
-    private:
+      virtual void log_me (const char *additional_msg);
+
       REPL_ENTRY_TYPE m_type;
       std::string m_class_name;
       DB_VALUE m_key_value;
+
+    private:
   };
 
   class rec_des_row_repl_entry : public single_row_repl_entry
@@ -136,18 +143,26 @@ namespace cubreplication
 			      CLASS_NAME_T &&class_name,
 			      RECDES *rec_des) : single_row_repl_entry (type, std::forward<CLASS_NAME_T> (class_name))
       {
-	assert (rec_des != NULL);
-
-	m_rec_des.length = rec_des->length;
-	m_rec_des.area_size = rec_des->area_size;
-	m_rec_des.type = rec_des->type;
-
-	m_rec_des.data = (char *) malloc (m_rec_des.length);
-	if (m_rec_des.data == NULL)
+	if (type != cubreplication::REPL_ENTRY_TYPE::REPL_DELETE)
 	  {
-	    assert (false);
+	    assert (rec_des != NULL);
+
+	    m_rec_des.length = rec_des->length;
+	    m_rec_des.area_size = rec_des->area_size;
+	    m_rec_des.type = rec_des->type;
+
+	    m_rec_des.data = (char *) malloc (m_rec_des.length);
+	    if (m_rec_des.data == NULL)
+	      {
+		assert (false);
+	      }
+	    memcpy (m_rec_des.data, rec_des->data, m_rec_des.length);
 	  }
-	memcpy (m_rec_des.data, rec_des->data, m_rec_des.length);
+	else
+	  {
+	    memset (&m_rec_des, 0, sizeof (m_rec_des));
+	  }
+
       }
       ~rec_des_row_repl_entry ();
 
@@ -156,6 +171,7 @@ namespace cubreplication
       virtual std::size_t get_packed_size (cubpacking::packer *serializator) override final;
 
       virtual bool is_equal (const cubpacking::packable_object *other) override final;
+      virtual void log_me (const char *additional_msg) override final;
 
     private:
       RECDES m_rec_des;
@@ -170,8 +186,11 @@ namespace cubreplication
 
       template<typename CLASS_NAME_T, typename ATT_INT_VEC_T, typename ATT_VAL_VEC_T>
       changed_attrs_row_repl_entry (REPL_ENTRY_TYPE type, CLASS_NAME_T &&class_name,
+				    const OID *inst_oid,
 				    ATT_INT_VEC_T &&changed_attrs,
-				    ATT_VAL_VEC_T &&new_values) : changed_attrs_row_repl_entry (type, std::forward<CLASS_NAME_T> (class_name))
+				    ATT_VAL_VEC_T &&new_values) : changed_attrs_row_repl_entry (type,
+					  std::forward<CLASS_NAME_T> (class_name),
+					  inst_oid)
       {
 	m_changed_attributes = std::forward<ATT_INT_VEC_T> (changed_attrs);
 	m_new_values = std::forward<ATT_VAL_VEC_T> (new_values);
@@ -179,14 +198,19 @@ namespace cubreplication
 
       template<typename CLASS_NAME_T>
       changed_attrs_row_repl_entry (REPL_ENTRY_TYPE type,
-				    CLASS_NAME_T &&class_name) : single_row_repl_entry (type, std::forward<CLASS_NAME_T> (class_name))
+				    CLASS_NAME_T &&class_name,
+				    const OID *inst_oid = NULL) : single_row_repl_entry (type, std::forward<CLASS_NAME_T> (class_name))
       {
+	if (inst_oid != NULL)
+	  {
+	    m_inst_oid = *inst_oid;
+	  }
       }
 
       ~changed_attrs_row_repl_entry ();
 
       void copy_and_add_changed_value (cubthread::entry &thread_entry,
-				       const int att_id,
+				       const ATTR_ID att_id,
 				       DB_VALUE *db_val);
 
       virtual int pack (cubpacking::packer *serializator) override final;
@@ -194,10 +218,27 @@ namespace cubreplication
       virtual std::size_t get_packed_size (cubpacking::packer *serializator) override final;
 
       virtual bool is_equal (const cubpacking::packable_object *other) override final;
+      virtual void log_me (const char *additional_msg) override final;
+
+      inline bool compare_inst_oid (const OID *other)
+      {
+	return m_inst_oid.pageid == other->pageid &&
+	       m_inst_oid.slotid == other->slotid &&
+	       m_inst_oid.volid == other->volid;
+      }
+
+      inline void set_inst_oid (const OID *other)
+      {
+	assert (other != NULL);
+
+	m_inst_oid = *other;
+      }
 
     private:
       std::vector <int> m_changed_attributes;
       std::vector <DB_VALUE> m_new_values;
+
+      OID m_inst_oid;
   };
 
 } /* namespace cubreplication */

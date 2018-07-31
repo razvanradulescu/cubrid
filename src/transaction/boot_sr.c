@@ -2566,6 +2566,7 @@ boot_restart_server (THREAD_ENTRY * thread_p, bool print_restart, const char *db
    * to all LOG_TDES' log_generator member variable
    */
   cubreplication::log_generator::create_stream (0);
+  cubreplication::enable_log_generator_logging = prm_get_bool_value (PRM_ID_REPL_LOG_GENERATOR_LOGGING);
 #endif
 
   /* 

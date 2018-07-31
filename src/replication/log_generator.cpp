@@ -30,9 +30,13 @@
 #include "packing_stream.hpp"
 #include "connection_globals.h"
 #include "log_impl.h"
+#include "heap_file.h"
+#include "error_manager.h"
 
 namespace cubreplication
 {
+  bool enable_log_generator_logging = false;
+
   log_generator::~log_generator ()
   {
     m_stream_entry.destroy_objects ();
@@ -55,6 +59,118 @@ namespace cubreplication
   int log_generator::append_repl_object (replication_object *object)
   {
     m_stream_entry.add_packable_entry (object);
+
+    if (enable_log_generator_logging)
+      {
+	object->log_me ("from append_repl_object(replication_object *)");
+      }
+
+    return NO_ERROR;
+  }
+
+  void log_generator::append_pending_repl_object (changed_attrs_row_repl_entry *object)
+  {
+    m_pending_to_be_added.push_back (object);
+  }
+
+  int log_generator::append_pending_repl_object (cubthread::entry &thread_entry, const OID *class_oid,
+      const OID *inst_oid, ATTR_ID col_id, DB_VALUE *value)
+  {
+    changed_attrs_row_repl_entry *entry = NULL;
+    char *class_name = NULL;
+
+    if (inst_oid == NULL)
+      {
+	return NO_ERROR;
+      }
+
+    for (auto &repl_obj : m_pending_to_be_added)
+      {
+	if (repl_obj->compare_inst_oid (inst_oid))
+	  {
+	    entry = repl_obj;
+	    break;
+	  }
+      }
+
+    if (entry != NULL)
+      {
+	entry->copy_and_add_changed_value (thread_entry,
+					   col_id,
+					   value);
+      }
+    else
+      {
+	int error_code = NO_ERROR;
+
+	if (heap_get_class_name (&thread_entry, class_oid, &class_name) != NO_ERROR || class_name == NULL)
+	  {
+	    ASSERT_ERROR_AND_SET (error_code);
+	    if (error_code == NO_ERROR)
+	      {
+		error_code = ER_REPL_ERROR;
+		er_set (ER_WARNING_SEVERITY, ARG_FILE_LINE, ER_REPL_ERROR, 1, "can't get class_name");
+	      }
+	    assert (false);
+	    return error_code;
+	  }
+
+	entry = new changed_attrs_row_repl_entry (cubreplication::REPL_ENTRY_TYPE::REPL_UPDATE,
+	    class_name,
+	    inst_oid);
+	entry->copy_and_add_changed_value (thread_entry,
+					   col_id,
+					   value);
+
+	m_pending_to_be_added.push_back (entry);
+      }
+
+    if (enable_log_generator_logging)
+      {
+	entry->log_me ("from append_pending_repl_object(*)");
+      }
+
+    return NO_ERROR;
+  }
+
+  int log_generator::set_key_to_repl_object (cubthread::entry &thread_entry, DB_VALUE *key, const OID *inst_oid,
+      char *class_name, RECDES *optional_recdes)
+  {
+    bool found = false;
+
+    assert (inst_oid != NULL);
+
+    for (auto repl_obj_it = m_pending_to_be_added.begin ();
+	 repl_obj_it != m_pending_to_be_added.end (); ++repl_obj_it)
+      {
+	if ((*repl_obj_it)->compare_inst_oid (inst_oid))
+	  {
+	    (*repl_obj_it)->set_key_value (thread_entry, key);
+
+	    (void) log_generator::append_repl_object (*repl_obj_it);
+	    repl_obj_it = m_pending_to_be_added.erase (repl_obj_it);
+
+	    found = true;
+
+	    break;
+	  }
+      }
+
+    if (!found)
+      {
+	if (optional_recdes == NULL)
+	  {
+	    assert (false);
+	    return ER_FAILED;
+	  }
+
+	cubreplication::rec_des_row_repl_entry *entry = new cubreplication::rec_des_row_repl_entry (
+	  cubreplication::REPL_ENTRY_TYPE::REPL_UPDATE,
+	  class_name,
+	  optional_recdes);
+
+	(void) log_generator::append_repl_object (entry);
+      }
 
     return NO_ERROR;
   }

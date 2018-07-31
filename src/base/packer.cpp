@@ -63,7 +63,7 @@ namespace cubpacking
 
   size_t packer::get_packed_int_size (size_t curr_offset)
   {
-    return DB_ALIGN (curr_offset, INT_ALIGNMENT) - curr_offset + OR_INT_SIZE;
+    return DB_ALIGN (curr_offset + OR_INT_SIZE, INT_ALIGNMENT) - curr_offset;
   }
 
   int packer::pack_int (const int value)
@@ -100,7 +100,7 @@ namespace cubpacking
 
   size_t packer::get_packed_short_size (size_t curr_offset)
   {
-    return DB_ALIGN (curr_offset, SHORT_ALIGNMENT) - curr_offset + OR_SHORT_SIZE;
+    return DB_ALIGN (curr_offset + OR_SHORT_SIZE, SHORT_ALIGNMENT) - curr_offset;
   }
 
   int packer::pack_short (short *value)
@@ -127,7 +127,7 @@ namespace cubpacking
 
   size_t packer::get_packed_bigint_size (size_t curr_offset)
   {
-    return DB_ALIGN (curr_offset, MAX_ALIGNMENT) - curr_offset + OR_BIGINT_SIZE;
+    return DB_ALIGN (curr_offset + OR_BIGINT_SIZE, MAX_ALIGNMENT) - curr_offset;
   }
 
   int packer::pack_bigint (std::int64_t *value)
@@ -198,7 +198,7 @@ namespace cubpacking
 
   size_t packer::get_packed_int_vector_size (size_t curr_offset, const int count)
   {
-    return DB_ALIGN (curr_offset, INT_ALIGNMENT) - curr_offset + (OR_INT_SIZE * (count + 1));
+    return DB_ALIGN (curr_offset + (OR_INT_SIZE * (count + 1)), INT_ALIGNMENT) - curr_offset;
   }
 
   int packer::pack_int_vector (const std::vector<int> &array)
@@ -244,10 +244,9 @@ namespace cubpacking
 
   size_t packer::get_packed_db_value_size (const DB_VALUE &value, size_t curr_offset)
   {
-    size_t aligned_offset = DB_ALIGN (curr_offset, MAX_ALIGNMENT);
     size_t unaligned_size = or_packed_value_size ((DB_VALUE *) &value, 1, 1, 0);
-    size_t aligned_size = unaligned_size;
-    return aligned_size + aligned_offset - curr_offset;
+
+    return DB_ALIGN (curr_offset + unaligned_size, MAX_ALIGNMENT) - curr_offset;
   }
 
   int packer::pack_db_value (const DB_VALUE &value)

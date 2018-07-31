@@ -7355,7 +7355,6 @@ locator_attribute_info_force (THREAD_ENTRY * thread_p, const HFID * hfid, OID * 
   MVCC_SNAPSHOT *saved_mvcc_snapshot = NULL;
   int tran_index;
   LOG_TDES *tdes;
-  char *class_name;
 
   tran_index = LOG_FIND_THREAD_TRAN_INDEX (thread_p);
   tdes = LOG_FIND_TDES (tran_index);
@@ -7368,18 +7367,6 @@ locator_attribute_info_force (THREAD_ENTRY * thread_p, const HFID * hfid, OID * 
   if (tdes->suppress_replication != 0)
     {
       return NO_ERROR;
-    }
-
-  if (heap_get_class_name (thread_p, oid, &class_name) != NO_ERROR || class_name == NULL)
-    {
-      ASSERT_ERROR_AND_SET (error_code);
-      if (error_code == NO_ERROR)
-	{
-	  error_code = ER_REPL_ERROR;
-	  er_set (ER_WARNING_SEVERITY, ARG_FILE_LINE, ER_REPL_ERROR, 1, "can't get class_name");
-	}
-      assert (false);
-      return error_code;
     }
 
   /* 
@@ -7395,140 +7382,85 @@ locator_attribute_info_force (THREAD_ENTRY * thread_p, const HFID * hfid, OID * 
     {
       COPY_OID (&class_oid, &attr_info->class_oid);
     }
+
   switch (operation)
     {
     case LC_FLUSH_UPDATE:
     case LC_FLUSH_UPDATE_PRUNE:
     case LC_FLUSH_UPDATE_PRUNE_VERIFY:
-      {
-	/* MVCC snapshot no needed for now scan_cache->mvcc_snapshot = logtb_get_mvcc_snapshot (thread_p); */
-	if (rec_descriptor != NULL)
-	  {
-	    copy_recdes = *rec_descriptor;
-	  }
-	else if (HEAP_IS_UPDATE_INPLACE (force_update_inplace) || need_locking == false)
-	  {
-	    HEAP_GET_CONTEXT context;
+      /* MVCC snapshot no needed for now scan_cache->mvcc_snapshot = logtb_get_mvcc_snapshot (thread_p); */
+      if (rec_descriptor != NULL)
+	{
+	  copy_recdes = *rec_descriptor;
+	}
+      else if (HEAP_IS_UPDATE_INPLACE (force_update_inplace) || need_locking == false)
+	{
+	  HEAP_GET_CONTEXT context;
 
-	    /* don't consider visiblity, just get the last version of the object */
-	    heap_init_get_context (thread_p, &context, oid, &class_oid, &copy_recdes, scan_cache, COPY, NULL_CHN);
-	    scan = heap_get_last_version (thread_p, &context);
-	    heap_clean_get_context (thread_p, &context);
+	  /* don't consider visiblity, just get the last version of the object */
+	  heap_init_get_context (thread_p, &context, oid, &class_oid, &copy_recdes, scan_cache, COPY, NULL_CHN);
+	  scan = heap_get_last_version (thread_p, &context);
+	  heap_clean_get_context (thread_p, &context);
 
-	    assert ((lock_get_object_lock (oid, &class_oid, LOG_FIND_THREAD_TRAN_INDEX (thread_p)) >= X_LOCK)
-		    || (lock_get_object_lock (&class_oid, oid_Root_class_oid,
-					      LOG_FIND_THREAD_TRAN_INDEX (thread_p) >= X_LOCK)));
-	  }
-	else
-	  {
-	    /* The oid has been already locked in select phase, however need to get the last object that may differ by
-	     * the current one in case that transaction updates same OID many times during command execution */
-	    /* TODO: investigate if this is still true */
-	    if (scan_cache && scan_cache->mvcc_snapshot != NULL)
-	      {
-		/* Why is snapshot set to NULL? */
-		saved_mvcc_snapshot = scan_cache->mvcc_snapshot;
-		scan_cache->mvcc_snapshot = NULL;
-	      }
+	  assert ((lock_get_object_lock (oid, &class_oid, LOG_FIND_THREAD_TRAN_INDEX (thread_p)) >= X_LOCK)
+		  || (lock_get_object_lock (&class_oid, oid_Root_class_oid,
+					    LOG_FIND_THREAD_TRAN_INDEX (thread_p) >= X_LOCK)));
+	}
+      else
+	{
+	  /* The oid has been already locked in select phase, however need to get the last object that may differ by
+	   * the current one in case that transaction updates same OID many times during command execution */
+	  /* TODO: investigate if this is still true */
+	  if (scan_cache && scan_cache->mvcc_snapshot != NULL)
+	    {
+	      /* Why is snapshot set to NULL? */
+	      saved_mvcc_snapshot = scan_cache->mvcc_snapshot;
+	      scan_cache->mvcc_snapshot = NULL;
+	    }
 
-	    scan = locator_lock_and_get_object (thread_p, oid, &class_oid, &copy_recdes, scan_cache, X_LOCK, COPY,
-						NULL_CHN, LOG_ERROR_IF_DELETED);
-	    if (saved_mvcc_snapshot != NULL)
-	      {
-		scan_cache->mvcc_snapshot = saved_mvcc_snapshot;
-	      }
-	  }
+	  scan = locator_lock_and_get_object (thread_p, oid, &class_oid, &copy_recdes, scan_cache, X_LOCK, COPY,
+					      NULL_CHN, LOG_ERROR_IF_DELETED);
+	  if (saved_mvcc_snapshot != NULL)
+	    {
+	      scan_cache->mvcc_snapshot = saved_mvcc_snapshot;
+	    }
+	}
 
-	if (scan == S_SUCCESS)
-	  {
-	    /* do nothing for the moment */
-	  }
-	else if (scan == S_ERROR || scan == S_DOESNT_FIT)
-	  {
-	    /* Whenever an error including an interrupt was broken out, quit the update. */
-	    return ER_FAILED;
-	  }
-	else if (scan == S_DOESNT_EXIST)
-	  {
-	    int err_id = er_errid ();
-	    if (err_id == ER_HEAP_NODATA_NEWADDRESS)
-	      {
-		/* it is an immature record. go ahead to update */
-		er_clear ();	/* clear ER_HEAP_NODATA_NEWADDRESS */
-	      }
-	    else
-	      {
-		return ((err_id == NO_ERROR) ? ER_HEAP_UNKNOWN_OBJECT : err_id);	/* other errors should return S_ERROR? */
-	      }
-	  }
-	else if (scan == S_SNAPSHOT_NOT_SATISFIED)
-	  {
-	    return ER_FAILED;
-	  }
-	else
-	  {
-	    assert (false);
-	    return ER_FAILED;
-	  }
+      if (scan == S_SUCCESS)
+	{
+	  /* do nothing for the moment */
+	}
+      else if (scan == S_ERROR || scan == S_DOESNT_FIT)
+	{
+	  /* Whenever an error including an interrupt was broken out, quit the update. */
+	  return ER_FAILED;
+	}
+      else if (scan == S_DOESNT_EXIST)
+	{
+	  int err_id = er_errid ();
+	  if (err_id == ER_HEAP_NODATA_NEWADDRESS)
+	    {
+	      /* it is an immature record. go ahead to update */
+	      er_clear ();	/* clear ER_HEAP_NODATA_NEWADDRESS */
+	    }
+	  else
+	    {
+	      return ((err_id == NO_ERROR) ? ER_HEAP_UNKNOWN_OBJECT : err_id);	/* other errors should return S_ERROR? */
+	    }
+	}
+      else if (scan == S_SNAPSHOT_NOT_SATISFIED)
+	{
+	  return ER_FAILED;
+	}
+      else
+	{
+	  assert (false);
+	  return ER_FAILED;
+	}
 
-	old_recdes = &copy_recdes;
+      old_recdes = &copy_recdes;
 
-#if defined (SERVER_MODE)
-	int pk_btid_index = -1;
-
-	for (int i = 0; i < attr_info->last_classrepr->n_indexes; i++)
-	  {
-	    OR_INDEX *index = &(attr_info->last_classrepr->indexes[i]);
-	    if (!LOG_CHECK_LOG_APPLIER (thread_p) && index->type == BTREE_PRIMARY_KEY
-		&& log_does_allow_replication () == true)
-	      {
-		pk_btid_index = i;
-		break;
-	      }
-	  }
-
-	if (pk_btid_index != -1)
-	  {
-	    DB_VALUE *key_dbvalue = NULL;
-	    DB_VALUE dbvalue;
-	    BTID btid;
-	    char buf[DBVAL_BUFSIZE + MAX_ALIGNMENT], *aligned_buf;
-	    cubreplication::changed_attrs_row_repl_entry * new_rbr;
-
-	    aligned_buf = PTR_ALIGN (buf, MAX_ALIGNMENT);
-
-	    db_make_null (&dbvalue);
-	    new_rbr =
-	      new cubreplication::changed_attrs_row_repl_entry (cubreplication::REPL_ENTRY_TYPE::REPL_UPDATE,
-								class_name);
-
-	    key_dbvalue =
-	      heap_attrvalue_get_key (thread_p, pk_btid_index, attr_info, rec_descriptor, &btid, &dbvalue,
-				      aligned_buf, NULL, NULL);
-
-	    assert (key_dbvalue != NULL);
-
-	    new_rbr->set_key_value (*thread_p, key_dbvalue);
-
-	    for (int i = 0; i < attr_info->num_values; i++)
-	      {
-		HEAP_ATTRVALUE value = attr_info->values[i];
-		DB_VALUE dbvalue = value.dbvalue;
-		PR_TYPE *pr_type = value.last_attrepr->domain->type;
-
-		if (pr_type == NULL)
-		  {
-		    assert (false);
-		    return ER_FAILED;
-		  }
-
-		new_rbr->copy_and_add_changed_value (*thread_p, i, &dbvalue);
-		tdes->replication_log_generator.append_repl_object (new_rbr);
-	      }
-	  }
-#endif
-	/* Fall through */
-      }
+      /* Fall through */
     case LC_FLUSH_INSERT:
     case LC_FLUSH_INSERT_PRUNE:
     case LC_FLUSH_INSERT_PRUNE_VERIFY:
@@ -7597,7 +7529,6 @@ locator_attribute_info_force (THREAD_ENTRY * thread_p, const HFID * hfid, OID * 
       error_code = ER_LC_BADFORCE_OPERATION;
       break;
     }
-
   return error_code;
 }
 
@@ -8259,12 +8190,12 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
   MVCC_REC_HEADER mvcc_rec_header[2];
 /* #endif */
 #if defined(ENABLE_SYSTEMTAP)
-  char *classname = NULL;
   bool is_started = false;
 #endif /* ENABLE_SYSTEMTAP */
-  LOG_TDES *tdes;
+  LOG_TDES *tdes = NULL;
   LOG_LSA preserved_repl_lsa;
   int tran_index;
+  char *classname = NULL;
 
   assert_release (class_oid != NULL);
   assert_release (!OID_ISNULL (class_oid));
@@ -8360,13 +8291,11 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
       goto error;
     }
 
-#if defined(ENABLE_SYSTEMTAP)
   if (heap_get_class_name (thread_p, class_oid, &classname) != NO_ERROR || classname == NULL)
     {
       ASSERT_ERROR_AND_SET (error_code);
       goto error;
     }
-#endif /* ENABLE_SYSTEMTAP */
 
   for (i = 0; i < num_btids; i++)
     {
@@ -8716,6 +8645,12 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
     {
       assert (repl_info != NULL);
 
+      if (tdes == NULL)
+	{
+	  tran_index = LOG_FIND_THREAD_TRAN_INDEX (thread_p);
+	  tdes = LOG_FIND_TDES (tran_index);
+	}
+
       if (repl_old_key == NULL)
 	{
 	  key_domain = NULL;
@@ -8746,10 +8681,10 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
 	      repl_old_key->data.midxkey.domain = key_domain;
 	    }
 
-#if 0
+#if defined (SERVER_MODE)
 	  error_code =
-	    repl_log_insert (thread_p, class_oid, oid, LOG_REPLICATION_DATA, RVREPL_DATA_UPDATE, repl_old_key,
-			     (REPL_INFO_TYPE) repl_info->repl_info_type);
+	    tdes->replication_log_generator.set_key_to_repl_object (*thread_p, repl_old_key, oid, classname,
+								    new_recdes);
 #endif
 	  if (repl_old_key == &old_dbvalue)
 	    {
@@ -8758,10 +8693,10 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
 	}
       else
 	{
-#if 0
+#if defined (SERVER_MODE)
 	  error_code =
-	    repl_log_insert (thread_p, class_oid, oid, LOG_REPLICATION_DATA, RVREPL_DATA_UPDATE, repl_old_key,
-			     (REPL_INFO_TYPE) repl_info->repl_info_type);
+	    tdes->replication_log_generator.set_key_to_repl_object (*thread_p, repl_old_key, oid, classname,
+								    new_recdes);
 #endif
 	  pr_free_ext_value (repl_old_key);
 	  repl_old_key = NULL;

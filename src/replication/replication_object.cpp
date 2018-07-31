@@ -27,9 +27,14 @@
 #include "object_representation.h"
 #include "thread_manager.hpp"
 #include "memory_alloc.h"
+#include "object_primitive.h"
 
 namespace cubreplication
 {
+  static const char *repl_entry_type_str[] = {"update",
+					      "insert",
+					      "delete"
+					     };
 
   single_row_repl_entry::~single_row_repl_entry ()
   {
@@ -118,6 +123,24 @@ namespace cubreplication
     return NO_ERROR;
   }
 
+  void single_row_repl_entry::log_me (const char *additional_msg)
+  {
+    char *key_to_string = pr_valstring (NULL, &m_key_value);
+
+    if (additional_msg == NULL)
+      {
+	er_log_debug (ARG_FILE_LINE, "type=%s key_dbvalue=%s table=%s\n", repl_entry_type_str[m_type], key_to_string,
+		      m_class_name.c_str ());
+      }
+    else
+      {
+	er_log_debug (ARG_FILE_LINE, "type=%s key_dbvalue=%s table=%s additional message=%s\n", repl_entry_type_str[m_type],
+		      key_to_string, m_class_name.c_str (), additional_msg);
+      }
+
+    db_private_free (NULL, key_to_string);
+  }
+
   /////////////////////////////////
   int sbr_repl_entry::apply (void)
   {
@@ -144,7 +167,7 @@ namespace cubreplication
     /* type of packed object */
     std::size_t entry_size = serializator->get_packed_int_size (0);
 
-    entry_size += serializator->get_packed_large_string_size (m_statement, entry_size);
+    entry_size += serializator->get_packed_string_size (m_statement, entry_size);
     entry_size += serializator->get_packed_string_size (m_db_user, entry_size);
     entry_size += serializator->get_packed_string_size (m_sys_prm_context, entry_size);
 
@@ -154,7 +177,7 @@ namespace cubreplication
   int sbr_repl_entry::pack (cubpacking::packer *serializator)
   {
     serializator->pack_int (sbr_repl_entry::ID);
-    serializator->pack_large_string (m_statement);
+    serializator->pack_string (m_statement);
     serializator->pack_string (m_db_user);
     serializator->pack_string (m_sys_prm_context);
 
@@ -166,11 +189,23 @@ namespace cubreplication
     int entry_type_not_used;
 
     serializator->unpack_int (&entry_type_not_used);
-    serializator->unpack_large_string (m_statement);
+    serializator->unpack_string (m_statement);
     serializator->unpack_string (m_db_user);
     serializator->unpack_string (m_sys_prm_context);
 
     return NO_ERROR;
+  }
+
+  void sbr_repl_entry::log_me (const char *additional_msg)
+  {
+    if (additional_msg == NULL)
+      {
+	er_log_debug (ARG_FILE_LINE, "sbr_repl_entry: statement=%s\n", m_statement.c_str ());
+      }
+    else
+      {
+	er_log_debug (ARG_FILE_LINE, "sbr_repl_entry: statement=%s additional info=%s\n", m_statement.c_str (), additional_msg);
+      }
   }
 
   changed_attrs_row_repl_entry::~changed_attrs_row_repl_entry ()
@@ -320,6 +355,13 @@ namespace cubreplication
     return true;
   }
 
+  void changed_attrs_row_repl_entry::log_me (const char *additional_msg)
+  {
+    er_log_debug (ARG_FILE_LINE, "changed_attrs_row_repl_entry: ");
+
+    single_row_repl_entry::log_me (additional_msg);
+  }
+
   int rec_des_row_repl_entry::pack (cubpacking::packer *serializator)
   {
     int rc;
@@ -390,9 +432,15 @@ namespace cubreplication
 
     other_t = dynamic_cast<const rec_des_row_repl_entry *> (other);
 
-    if (other_t == NULL)
+    if (other_t == NULL ||
+	m_type != other_t->m_type)
       {
 	return false;
+      }
+
+    if (m_type == cubreplication::REPL_ENTRY_TYPE::REPL_DELETE)
+      {
+	return true;
       }
 
     if (m_rec_des.length != other_t->m_rec_des.length ||
@@ -408,7 +456,17 @@ namespace cubreplication
 
   rec_des_row_repl_entry::~rec_des_row_repl_entry ()
   {
-    free (m_rec_des.data);
+    if (m_rec_des.data != NULL)
+      {
+	free (m_rec_des.data);
+      }
+  }
+
+  void rec_des_row_repl_entry::log_me (const char *additional_msg)
+  {
+    er_log_debug (ARG_FILE_LINE, "rec_des_row_repl_entry: ");
+
+    single_row_repl_entry::log_me (additional_msg);
   }
 
 } /* namespace cubreplication */

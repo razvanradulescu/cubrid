@@ -98,7 +98,7 @@ namespace cubreplication
 	m_header.group_commit_flag = arg_group_commit_flag;
       };
 
-      size_t get_header_size ()
+      size_t get_header_size () override
       {
 	static size_t header_size = replication_stream_entry_header::get_size ();
 
