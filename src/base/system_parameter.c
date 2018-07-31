@@ -5485,7 +5485,7 @@ static SYSPRM_PARAM prm_Def[] = {
    (void *) NULL, (void *) &prm_repl_consumer_buffer_size_lower,
    (char *) NULL,
    (DUP_PRM_FUNC) NULL,
-   (DUP_PRM_FUNC) NULL}
+   (DUP_PRM_FUNC) NULL},
   {PRM_ID_REPL_LOG_GENERATOR_LOGGING,
    PRM_NAME_REPL_LOG_GENERATOR_LOGGING,
    (PRM_FOR_SERVER | PRM_HIDDEN),

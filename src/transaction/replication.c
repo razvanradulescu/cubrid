@@ -489,7 +489,7 @@ repl_log_insert (THREAD_ENTRY * thread_p, const OID * class_oid, const OID * ins
 	}
 
       new_rbr = new cubreplication::single_row_repl_entry (new_rbr_type, class_name);
-      new_rbr->set_key_value (*thread_p, key_dbvalue);
+      new_rbr->set_key_value (key_dbvalue);
 
       tdes->replication_log_generator.append_repl_object (new_rbr);
     }
@@ -544,7 +544,7 @@ repl_log_insert_with_recdes (THREAD_ENTRY * thread_p, const char *class_name,
   int packed_key_len = 0;
 
   new_rbr = new cubreplication::rec_des_row_repl_entry (new_rbr_type, class_name, recdes);
-  new_rbr->set_key_value (*thread_p, key_dbvalue);
+  new_rbr->set_key_value (key_dbvalue);
 
   tdes->replication_log_generator.append_repl_object (new_rbr);
 #endif

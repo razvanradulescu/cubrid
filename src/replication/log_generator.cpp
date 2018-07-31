@@ -93,8 +93,7 @@ namespace cubreplication
 
     if (entry != NULL)
       {
-	entry->copy_and_add_changed_value (thread_entry,
-					   col_id,
+	entry->copy_and_add_changed_value (col_id,
 					   value);
       }
     else
@@ -116,8 +115,7 @@ namespace cubreplication
 	entry = new changed_attrs_row_repl_entry (cubreplication::REPL_ENTRY_TYPE::REPL_UPDATE,
 	    class_name,
 	    inst_oid);
-	entry->copy_and_add_changed_value (thread_entry,
-					   col_id,
+	entry->copy_and_add_changed_value (col_id,
 					   value);
 
 	m_pending_to_be_added.push_back (entry);
@@ -131,7 +129,7 @@ namespace cubreplication
     return NO_ERROR;
   }
 
-  int log_generator::set_key_to_repl_object (cubthread::entry &thread_entry, DB_VALUE *key, const OID *inst_oid,
+  int log_generator::set_key_to_repl_object (DB_VALUE *key, const OID *inst_oid,
       char *class_name, RECDES *optional_recdes)
   {
     bool found = false;
@@ -143,7 +141,7 @@ namespace cubreplication
       {
 	if ((*repl_obj_it)->compare_inst_oid (inst_oid))
 	  {
-	    (*repl_obj_it)->set_key_value (thread_entry, key);
+	    (*repl_obj_it)->set_key_value (key);
 
 	    (void) log_generator::append_repl_object (*repl_obj_it);
 	    repl_obj_it = m_pending_to_be_added.erase (repl_obj_it);

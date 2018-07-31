@@ -106,7 +106,7 @@ namespace cubreplication
 	m_class_name = std::forward<CLASS_NAME_T> (class_name);
       }
 
-      void set_key_value (cubthread::entry &thread_entry, DB_VALUE *db_val);
+      void set_key_value (DB_VALUE *db_val);
 
     protected:
       single_row_repl_entry () = default;
@@ -181,7 +181,7 @@ namespace cubreplication
   class changed_attrs_row_repl_entry : public single_row_repl_entry
   {
     public:
-      static const int ID = 3;
+      static const int PACKING_ID = 3;
 
       changed_attrs_row_repl_entry () = default;
 
@@ -210,8 +210,7 @@ namespace cubreplication
 
       ~changed_attrs_row_repl_entry ();
 
-      void copy_and_add_changed_value (cubthread::entry &thread_entry,
-				       const ATTR_ID att_id,
+      void copy_and_add_changed_value (const ATTR_ID att_id,
 				       DB_VALUE *db_val);
 
       virtual int pack (cubpacking::packer *serializator) override final;

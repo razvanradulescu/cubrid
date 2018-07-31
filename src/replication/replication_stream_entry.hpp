@@ -106,7 +106,7 @@ namespace cubreplication
 	m_header.group_commit_flag = arg_group_commit_flag;
       };
 
-      size_t get_header_size () override
+      size_t get_packed_header_size () override
       {
 	return s_header_size;
       }

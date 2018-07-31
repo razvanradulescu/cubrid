@@ -8683,7 +8683,7 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
 
 #if defined (SERVER_MODE)
 	  error_code =
-	    tdes->replication_log_generator.set_key_to_repl_object (*thread_p, repl_old_key, oid, classname,
+	    tdes->replication_log_generator.set_key_to_repl_object (repl_old_key, oid, classname,
 								    new_recdes);
 #endif
 	  if (repl_old_key == &old_dbvalue)
@@ -8695,7 +8695,7 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
 	{
 #if defined (SERVER_MODE)
 	  error_code =
-	    tdes->replication_log_generator.set_key_to_repl_object (*thread_p, repl_old_key, oid, classname,
+	    tdes->replication_log_generator.set_key_to_repl_object (repl_old_key, oid, classname,
 								    new_recdes);
 #endif
 	  pr_free_ext_value (repl_old_key);

@@ -27,10 +27,9 @@
 #define _LOG_GENERATOR_HPP_
 
 #include "replication_stream_entry.hpp"
-
-namespace cubstream
 #include "storage_common.h"
 
+namespace cubstream
 {
   class multi_thread_stream;
 }
@@ -51,6 +50,7 @@ namespace cubreplication
     private:
       std::vector <changed_attrs_row_repl_entry *> m_pending_to_be_added;
 
+      stream_entry m_stream_entry;
 
       static cubstream::multi_thread_stream *g_stream;
 
@@ -73,7 +73,7 @@ namespace cubreplication
       void append_pending_repl_object (changed_attrs_row_repl_entry *object);
       int append_pending_repl_object (cubthread::entry &thread_entry, const OID *class_oid, const OID *inst_oid,
 				      ATTR_ID col_id, DB_VALUE *value);
-      int set_key_to_repl_object (cubthread::entry &thread_entry, DB_VALUE *key, const OID *inst_oid, char *class_name,
+      int set_key_to_repl_object (DB_VALUE *key, const OID *inst_oid, char *class_name,
 				  RECDES *optional_recdes);
 
       stream_entry *get_stream_entry (void);
