@@ -405,7 +405,9 @@ error:
 
   if (log_Gl.trantable.area)
     {
-      delete[]log_Gl.trantable.area->tdesarea;
+      /* *INDENT-OFF* */
+      delete[] log_Gl.trantable.area->tdesarea;
+      /* *INDENT-ON* */
       free_and_init (log_Gl.trantable.area);
     }
 
@@ -457,7 +459,9 @@ logtb_finalize_mvcc_testing (THREAD_ENTRY ** thread_array)
 
   if (log_Gl.trantable.area)
     {
-      delete[]log_Gl.trantable.area->tdesarea;
+      /* *INDENT-OFF* */
+      delete[] log_Gl.trantable.area->tdesarea;
+      /* *INDENT-ON* */
       free_and_init (log_Gl.trantable.area);
     }
 }
