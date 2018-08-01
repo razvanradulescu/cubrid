@@ -102,13 +102,12 @@ namespace cubreplication
 
 	if (heap_get_class_name (&thread_entry, class_oid, &class_name) != NO_ERROR || class_name == NULL)
 	  {
-	    ASSERT_ERROR_AND_SET (error_code);
+	    ASSERT_ERROR ();
 	    if (error_code == NO_ERROR)
 	      {
 		error_code = ER_REPL_ERROR;
 		er_set (ER_WARNING_SEVERITY, ARG_FILE_LINE, ER_REPL_ERROR, 1, "can't get class_name");
 	      }
-	    assert (false);
 	    return error_code;
 	  }
 
