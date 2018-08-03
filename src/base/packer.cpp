@@ -312,7 +312,7 @@ namespace cubpacking
 
     entry_size = OR_BYTE_SIZE + strlen (string);
 
-    return entry_size;
+    return DB_ALIGN (curr_offset + entry_size, INT_ALIGNMENT) - curr_offset;
   }
 
   int packer::pack_small_string (const char *string)
@@ -335,6 +335,8 @@ namespace cubpacking
 	(void) memcpy (m_ptr, string, len);
 	m_ptr += len;
       }
+
+    align (INT_ALIGNMENT);
 
     return NO_ERROR;
   }
@@ -364,6 +366,8 @@ namespace cubpacking
       {
 	*string = '\0';
       }
+
+    align (INT_ALIGNMENT);
 
     return NO_ERROR;
   }
