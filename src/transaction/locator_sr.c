@@ -7353,21 +7353,6 @@ locator_attribute_info_force (THREAD_ENTRY * thread_p, const HFID * hfid, OID * 
   HFID class_hfid;
   OID class_oid;
   MVCC_SNAPSHOT *saved_mvcc_snapshot = NULL;
-  int tran_index;
-  LOG_TDES *tdes;
-
-  tran_index = LOG_FIND_THREAD_TRAN_INDEX (thread_p);
-  tdes = LOG_FIND_TDES (tran_index);
-  if (tdes == NULL)
-    {
-      return ER_FAILED;
-    }
-
-  /* If suppress_replication flag is set, do not write replication log. */
-  if (tdes->suppress_replication != 0)
-    {
-      return NO_ERROR;
-    }
 
   /* 
    * While scanning objects, the given scancache does not fix the last
@@ -8682,9 +8667,11 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
 	    }
 
 #if defined (SERVER_MODE)
-	  error_code =
-	    tdes->replication_log_generator.set_key_to_repl_object (repl_old_key, oid, classname,
-								    new_recdes);
+	  if (tdes->suppress_replication == 0)
+	    {
+	      error_code =
+		tdes->replication_log_generator.set_key_to_repl_object (repl_old_key, oid, classname, new_recdes);
+	    }
 #endif
 	  if (repl_old_key == &old_dbvalue)
 	    {
@@ -8694,9 +8681,11 @@ locator_update_index (THREAD_ENTRY * thread_p, RECDES * new_recdes, RECDES * old
       else
 	{
 #if defined (SERVER_MODE)
-	  error_code =
-	    tdes->replication_log_generator.set_key_to_repl_object (repl_old_key, oid, classname,
-								    new_recdes);
+	  if (tdes->suppress_replication == 0)
+	    {
+	      error_code =
+		tdes->replication_log_generator.set_key_to_repl_object (repl_old_key, oid, classname, new_recdes);
+	    }
 #endif
 	  pr_free_ext_value (repl_old_key);
 	  repl_old_key = NULL;

@@ -96,9 +96,9 @@ namespace cubpacking
       int pack_c_string (const char *str, const size_t str_size);
       int unpack_c_string (char *str, const size_t max_str_size);
 
-      static std::size_t get_packed_recdes_size (RECDES *recdes, const size_t curr_offset);
-      int pack_recdes (RECDES *recdes);
-      int unpack_recdes (RECDES *recdes);
+      static std::size_t get_packed_stream_size (const char *stream, const std::size_t length, const std::size_t curr_offset);
+      int pack_stream (const char *stream, const std::size_t length);
+      int unpack_stream (char *stream, const std::size_t length);
 
       const char *get_curr_ptr (void)
       {

@@ -63,7 +63,7 @@ namespace cubpacking
 
   size_t packer::get_packed_int_size (size_t curr_offset)
   {
-    return DB_ALIGN (curr_offset + OR_INT_SIZE, INT_ALIGNMENT) - curr_offset;
+    return DB_ALIGN (curr_offset, INT_ALIGNMENT) - curr_offset + OR_INT_SIZE;
   }
 
   int packer::pack_int (const int value)
@@ -100,7 +100,7 @@ namespace cubpacking
 
   size_t packer::get_packed_short_size (size_t curr_offset)
   {
-    return DB_ALIGN (curr_offset + OR_SHORT_SIZE, SHORT_ALIGNMENT) - curr_offset;
+    return DB_ALIGN (curr_offset, SHORT_ALIGNMENT) - curr_offset + OR_SHORT_SIZE;
   }
 
   int packer::pack_short (short *value)
@@ -127,7 +127,7 @@ namespace cubpacking
 
   size_t packer::get_packed_bigint_size (size_t curr_offset)
   {
-    return DB_ALIGN (curr_offset + OR_BIGINT_SIZE, MAX_ALIGNMENT) - curr_offset;
+    return DB_ALIGN (curr_offset, MAX_ALIGNMENT) - curr_offset + OR_BIGINT_SIZE;
   }
 
   int packer::pack_bigint (std::int64_t *value)
@@ -220,7 +220,7 @@ namespace cubpacking
 
   size_t packer::get_packed_int_vector_size (size_t curr_offset, const int count)
   {
-    return DB_ALIGN (curr_offset + (OR_INT_SIZE * (count + 1)), INT_ALIGNMENT) - curr_offset;
+    return DB_ALIGN (curr_offset, INT_ALIGNMENT) - curr_offset + (OR_INT_SIZE * (count + 1));
   }
 
   int packer::pack_int_vector (const std::vector<int> &array)
@@ -266,9 +266,10 @@ namespace cubpacking
 
   size_t packer::get_packed_db_value_size (const DB_VALUE &value, size_t curr_offset)
   {
+    size_t aligned_offset = DB_ALIGN (curr_offset, MAX_ALIGNMENT);
     size_t unaligned_size = or_packed_value_size ((DB_VALUE *) &value, 1, 1, 0);
-
-    return DB_ALIGN (curr_offset + unaligned_size, MAX_ALIGNMENT) - curr_offset;
+    size_t aligned_size = unaligned_size;
+    return aligned_size + aligned_offset - curr_offset;
   }
 
   int packer::pack_db_value (const DB_VALUE &value)
@@ -311,7 +312,7 @@ namespace cubpacking
 
     entry_size = OR_BYTE_SIZE + strlen (string);
 
-    return DB_ALIGN (curr_offset + entry_size, INT_ALIGNMENT) - curr_offset;
+    return entry_size;
   }
 
   int packer::pack_small_string (const char *string)
@@ -334,8 +335,6 @@ namespace cubpacking
 	(void) memcpy (m_ptr, string, len);
 	m_ptr += len;
       }
-
-    align (INT_ALIGNMENT);
 
     return NO_ERROR;
   }
@@ -365,8 +364,6 @@ namespace cubpacking
       {
 	*string = '\0';
       }
-
-    align (INT_ALIGNMENT);
 
     return NO_ERROR;
   }
@@ -533,52 +530,32 @@ namespace cubpacking
     return NO_ERROR;
   }
 
-  std::size_t packer::get_packed_recdes_size (RECDES *recdes, const std::size_t curr_offset)
+  std::size_t packer::get_packed_stream_size (const char *stream, const std::size_t length, const std::size_t curr_offset)
   {
-    /* we subtract curr_offset because
-     * the function is used as curr_offset += get_*_size (*, curr_offset)
-     */
-    std::size_t entry_size;
+    std::size_t actual_length = 0;
 
-    entry_size = OR_INT_SIZE + recdes->length;
+    if (stream != NULL)
+      {
+	actual_length = length;
+      }
 
-    return DB_ALIGN (curr_offset + entry_size, INT_ALIGNMENT) - curr_offset;
+    std::size_t entry_size = OR_INT_SIZE + actual_length;
+
+    return DB_ALIGN (curr_offset, INT_ALIGNMENT) + entry_size - curr_offset;
   }
 
-  int packer::pack_recdes (RECDES *recdes)
+  int packer::pack_stream (const char *stream, const std::size_t length)
   {
-    int rc = NO_ERROR;
-
-    rc = pack_int (recdes->length);
-    if (rc != NO_ERROR)
-      {
-	assert (false);
-	return rc;
-      }
-    m_ptr = or_pack_stream (m_ptr, recdes->data, recdes->length);
+    align (INT_ALIGNMENT);
+    m_ptr = or_pack_stream (m_ptr, stream, length);
 
     return NO_ERROR;
   }
 
-  int packer::unpack_recdes (RECDES *recdes)
+  int packer::unpack_stream (char *stream, const std::size_t length)
   {
-    int rc = NO_ERROR;
-
-    rc = unpack_int (&recdes->length);
-    if (rc != NO_ERROR)
-      {
-	assert (false);
-	return rc;
-      }
-
-    recdes->data = (char *) malloc (recdes->length);
-    if (recdes->data == NULL)
-      {
-	assert (false);
-	return ER_FAILED;
-      }
-
-    m_ptr = or_unpack_stream (m_ptr, recdes->data, recdes->length);
+    align (INT_ALIGNMENT);
+    m_ptr = or_unpack_stream (m_ptr, stream, length);
 
     return NO_ERROR;
   }

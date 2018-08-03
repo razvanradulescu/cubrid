@@ -25,6 +25,11 @@
 
 void string_buffer::add_bytes (size_t len, void *bytes)
 {
+  if (bytes == NULL)
+    {
+      return;
+    }
+
   if (bytes && m_len + len + 1 > dim)
     {
       extend (m_len + len + 1 - dim);

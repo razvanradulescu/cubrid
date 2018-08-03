@@ -11175,13 +11175,18 @@ heap_attrinfo_set (const OID * inst_oid, ATTR_ID attrid, DB_VALUE * attr_val, HE
   assert (thread_p != NULL);
   log_tdes = LOG_FIND_CURRENT_TDES (thread_p);
 
-  ret =
-    log_tdes->replication_log_generator.append_pending_repl_object (*thread_p, &attr_info->class_oid, inst_oid, attrid,
-								    attr_val);
-  if (ret != NO_ERROR)
+  /* If suppress_replication flag is set, do not write replication log. */
+  if (log_tdes->suppress_replication == 0)
     {
-      goto exit_on_error;
+      ret =
+	log_tdes->replication_log_generator.append_pending_repl_object (*thread_p, &attr_info->class_oid, inst_oid,
+									attrid, attr_val);
+      if (ret != NO_ERROR)
+	{
+	  goto exit_on_error;
+	}
     }
+
 #endif
   return ret;
 

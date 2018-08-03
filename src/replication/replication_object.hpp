@@ -34,6 +34,8 @@
 #include <vector>
 #include <string>
 
+class string_buffer;
+
 namespace cubreplication
 {
 
@@ -51,7 +53,7 @@ namespace cubreplication
   {
     public:
       virtual int apply (void) = 0;
-      virtual void log_me (const char *additional_msg) = 0;
+      virtual void stringify (string_buffer &str, const char *additional_msg = NULL) = 0;
   };
 
   class sbr_repl_entry : public replication_object
@@ -90,7 +92,7 @@ namespace cubreplication
 
       std::size_t get_packed_size (cubpacking::packer *serializator);
 
-      virtual void log_me (const char *additional_msg) override final;
+      void stringify (string_buffer &str, const char *additional_msg = NULL) override final;
   };
 
   class single_row_repl_entry : public replication_object
@@ -123,7 +125,7 @@ namespace cubreplication
       virtual int unpack (cubpacking::packer *serializator);
       virtual std::size_t get_packed_size (cubpacking::packer *serializator, std::size_t start_offset = 0);
 
-      virtual void log_me (const char *additional_msg);
+      void stringify (string_buffer &str, const char *additional_msg = NULL) override;
 
       REPL_ENTRY_TYPE m_type;
       std::string m_class_name;
@@ -172,7 +174,7 @@ namespace cubreplication
       virtual std::size_t get_packed_size (cubpacking::packer *serializator) override final;
 
       virtual bool is_equal (const cubpacking::packable_object *other) override final;
-      virtual void log_me (const char *additional_msg) override final;
+      void stringify (string_buffer &str, const char *additional_msg = NULL) override final;
 
     private:
       RECDES m_rec_des;
@@ -218,7 +220,7 @@ namespace cubreplication
       virtual std::size_t get_packed_size (cubpacking::packer *serializator) override final;
 
       virtual bool is_equal (const cubpacking::packable_object *other) override final;
-      virtual void log_me (const char *additional_msg) override final;
+      void stringify (string_buffer &str, const char *additional_msg = NULL) override final;
 
       inline bool compare_inst_oid (const OID *other)
       {

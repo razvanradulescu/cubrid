@@ -28,6 +28,7 @@
 #include "thread_manager.hpp"
 #include "memory_alloc.h"
 #include "object_primitive.h"
+#include "string_buffer.hpp"
 
 namespace cubreplication
 {
@@ -123,19 +124,16 @@ namespace cubreplication
     return NO_ERROR;
   }
 
-  void single_row_repl_entry::log_me (const char *additional_msg)
+  void single_row_repl_entry::stringify (string_buffer &str, const char *additional_msg)
   {
     char *key_to_string = pr_valstring (NULL, &m_key_value);
 
-    if (additional_msg == NULL)
+    str ("type=%s key_dbvalue=%s table=%s\n", repl_entry_type_str[m_type], key_to_string,
+	 m_class_name.c_str ());
+
+    if (additional_msg != NULL)
       {
-	er_log_debug (ARG_FILE_LINE, "type=%s key_dbvalue=%s table=%s\n", repl_entry_type_str[m_type], key_to_string,
-		      m_class_name.c_str ());
-      }
-    else
-      {
-	er_log_debug (ARG_FILE_LINE, "type=%s key_dbvalue=%s table=%s additional message=%s\n", repl_entry_type_str[m_type],
-		      key_to_string, m_class_name.c_str (), additional_msg);
+	str ("additional message=%s\n", additional_msg);
       }
 
     db_private_free (NULL, key_to_string);
@@ -196,15 +194,13 @@ namespace cubreplication
     return NO_ERROR;
   }
 
-  void sbr_repl_entry::log_me (const char *additional_msg)
+  void sbr_repl_entry::stringify (string_buffer &str, const char *additional_msg)
   {
-    if (additional_msg == NULL)
+    str ("sbr_repl_entry: statement=%s\n", m_statement.c_str ());
+
+    if (additional_msg != NULL)
       {
-	er_log_debug (ARG_FILE_LINE, "sbr_repl_entry: statement=%s\n", m_statement.c_str ());
-      }
-    else
-      {
-	er_log_debug (ARG_FILE_LINE, "sbr_repl_entry: statement=%s additional info=%s\n", m_statement.c_str (), additional_msg);
+	str ("additional message=%s\n", additional_msg);
       }
   }
 
@@ -308,7 +304,7 @@ namespace cubreplication
     /* type of packed object */
     std::size_t entry_size = serializator->get_packed_int_size (0);
 
-    entry_size += single_row_repl_entry::get_packed_size (serializator, entry_size);
+    entry_size = single_row_repl_entry::get_packed_size (serializator, entry_size);
 
     entry_size += serializator->get_packed_int_vector_size (entry_size, (int) m_changed_attributes.size ());
     entry_size += serializator->get_packed_int_size (entry_size);
@@ -359,11 +355,23 @@ namespace cubreplication
     return true;
   }
 
-  void changed_attrs_row_repl_entry::log_me (const char *additional_msg)
+  void changed_attrs_row_repl_entry::stringify (string_buffer &str, const char *additional_msg)
   {
-    er_log_debug (ARG_FILE_LINE, "changed_attrs_row_repl_entry: ");
+    str ("changed_attrs_row_repl_entry:\n");
 
-    single_row_repl_entry::log_me (additional_msg);
+    for (std::size_t i = 0; i < m_changed_attributes.size (); i++)
+      {
+	char *key_to_string = pr_valstring (NULL, &m_new_values[i]);
+	assert (key_to_string != NULL);
+
+	str ("id=%d value=%s\n", m_changed_attributes[i], key_to_string);
+
+	db_private_free (NULL, key_to_string);
+      }
+
+    str ("inst oid: pageid:%d slotid:%d volid:%d\n", m_inst_oid.pageid, m_inst_oid.slotid, m_inst_oid.volid);
+
+    single_row_repl_entry::stringify (str, additional_msg);
   }
 
   int rec_des_row_repl_entry::pack (cubpacking::packer *serializator)
@@ -377,8 +385,9 @@ namespace cubreplication
 	return rc;
       }
 
-    single_row_repl_entry::pack (serializator);
-    rc = serializator->pack_recdes (&m_rec_des);
+    (void) single_row_repl_entry::pack (serializator);
+
+    rc = m_rec_des.pack (serializator);
     if (rc != NO_ERROR)
       {
 	assert (false);
@@ -398,9 +407,10 @@ namespace cubreplication
 	assert (false);
 	return rc;
       }
-    single_row_repl_entry::unpack (serializator);
 
-    rc = serializator->unpack_recdes (&m_rec_des);
+    (void) single_row_repl_entry::unpack (serializator);
+
+    rc = m_rec_des.unpack (serializator);
     if (rc != NO_ERROR)
       {
 	assert (false);
@@ -417,8 +427,8 @@ namespace cubreplication
     /* type of packed object */
     std::size_t entry_size = serializator->get_packed_int_size (0);
 
-    entry_size += single_row_repl_entry::get_packed_size (serializator, entry_size);
-    entry_size += serializator->get_packed_recdes_size (&m_rec_des, entry_size);
+    entry_size = single_row_repl_entry::get_packed_size (serializator, entry_size);
+    entry_size += m_rec_des.get_packed_size (entry_size);
 
     return entry_size;
   }
@@ -466,11 +476,16 @@ namespace cubreplication
       }
   }
 
-  void rec_des_row_repl_entry::log_me (const char *additional_msg)
+  void rec_des_row_repl_entry::stringify (string_buffer &str, const char *additional_msg)
   {
-    er_log_debug (ARG_FILE_LINE, "rec_des_row_repl_entry: ");
+    str ("rec_des_row_repl_entry:\n");
 
-    single_row_repl_entry::log_me (additional_msg);
+    if (m_rec_des.data != NULL)
+      {
+	str ("recdes length=%d\n", m_rec_des.length);
+      }
+
+    single_row_repl_entry::stringify (str, additional_msg);
   }
 
 } /* namespace cubreplication */

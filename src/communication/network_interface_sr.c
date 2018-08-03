@@ -2346,17 +2346,6 @@ stran_server_commit (THREAD_ENTRY * thread_p, unsigned int rid, char *request, i
   int row_count = DB_ROW_COUNT_NOT_SET;
   int n_query_ids = 0, i = 0;
   QUERY_ID query_id;
-  int tran_index;
-  LOG_TDES *tdes;
-
-  tran_index = LOG_FIND_THREAD_TRAN_INDEX (thread_p);
-  tdes = LOG_FIND_TDES (tran_index);
-  if (tdes == NULL)
-    {
-      return_error_to_client (thread_p, rid);
-    }
-
-  tdes->replication_log_generator.pack_stream_entry ();
 
   ptr = or_unpack_int (request, &xretain_lock);
   ptr = or_unpack_int (ptr, &row_count);

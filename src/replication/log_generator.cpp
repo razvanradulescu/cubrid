@@ -30,6 +30,7 @@
 #include "heap_file.h"
 #include "system_parameter.h"
 #include "error_manager.h"
+#include "string_buffer.hpp"
 
 namespace cubreplication
 {
@@ -60,7 +61,11 @@ namespace cubreplication
 
     if (enable_log_generator_logging)
       {
-	object->log_me ("from append_repl_object(replication_object *)");
+	string_buffer strb;
+
+	object->stringify (strb, "from append_repl_object(replication_object *)");
+
+	er_log_debug (ARG_FILE_LINE, "%s", strb.get_buffer ());
       }
 
     return NO_ERROR;
@@ -122,7 +127,11 @@ namespace cubreplication
 
     if (enable_log_generator_logging)
       {
-	entry->log_me ("from append_pending_repl_object(*)");
+	string_buffer strb;
+
+	entry->stringify (strb, "from append_pending_repl_object(*)");
+
+	er_log_debug (ARG_FILE_LINE, "%s", strb.get_buffer ());
       }
 
     return NO_ERROR;
@@ -146,6 +155,14 @@ namespace cubreplication
 	    repl_obj_it = m_pending_to_be_added.erase (repl_obj_it);
 
 	    found = true;
+	    if (enable_log_generator_logging)
+	      {
+		string_buffer strb;
+
+		(*repl_obj_it)->stringify (strb, "from set_key_to_repl_object(*)");
+
+		er_log_debug (ARG_FILE_LINE, "%s", strb.get_buffer ());
+	      }
 
 	    break;
 	  }
@@ -165,6 +182,15 @@ namespace cubreplication
 	  optional_recdes);
 
 	(void) log_generator::append_repl_object (entry);
+
+	if (enable_log_generator_logging)
+	  {
+	    string_buffer strb;
+
+	    entry->stringify (strb, "from set_key_to_repl_object(*)");
+
+	    er_log_debug (ARG_FILE_LINE, "%s", strb.get_buffer ());
+	  }
       }
 
     return NO_ERROR;

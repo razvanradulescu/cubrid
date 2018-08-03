@@ -5767,6 +5767,11 @@ log_commit (THREAD_ENTRY * thread_p, int tran_index, bool retain_lock)
       LOG_CS_EXIT (thread_p);
     }
 
+  if (tdes->suppress_replication == 0)
+    {
+      tdes->replication_log_generator.pack_stream_entry ();
+    }
+
   perfmon_inc_stat (thread_p, PSTAT_TRAN_NUM_COMMITS);
 
   return state;
