@@ -5983,6 +5983,9 @@ log_abort_partial (THREAD_ENTRY * thread_p, const char *savepoint_name, LOG_LSA 
    * get undefined and cannot get call by the user any longer.
    */
   LSA_COPY (&tdes->savept_lsa, savept_lsa);
+
+  tdes->replication_log_generator.abort_pending_repl_objects ();
+
   return TRAN_UNACTIVE_ABORTED;
 }
 

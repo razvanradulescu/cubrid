@@ -184,22 +184,9 @@ namespace cubreplication
     return NO_ERROR;
   }
 
-  int log_generator::revert_last_pending_by_oid (const OID *inst_oid)
+  void log_generator::abort_pending_repl_objects ()
   {
-
-    auto repl_obj_it = std::find_if (m_pending_to_be_added.rbegin (), m_pending_to_be_added.rend (),
-				     [&inst_oid] (changed_attrs_row_repl_entry *repl_obj)
-    {
-      return repl_obj->compare_inst_oid (inst_oid);
-    });
-
-    if (repl_obj_it != m_pending_to_be_added.rend ())
-      {
-	m_pending_to_be_added.erase ((repl_obj_it+1).base ());
-	return NO_ERROR;
-      }
-
-    return ER_FAILED;
+    m_pending_to_be_added.clear ();
   }
 
   stream_entry *log_generator::get_stream_entry (void)

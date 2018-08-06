@@ -67,7 +67,7 @@ namespace cubreplication
 
     public:
 
-      log_generator () : m_stream_entry (NULL) { };
+      log_generator () : log_generator (NULL) { };
 
       log_generator (cubstream::multi_thread_stream *stream) : m_stream_entry (stream) { };
 
@@ -84,7 +84,7 @@ namespace cubreplication
 				  RECDES *optional_recdes);
       int set_key_to_repl_object (DB_VALUE *key, const OID *inst_oid,
 				  const OID *class_oid, RECDES *optional_recdes);
-      int revert_last_pending_by_oid (const OID *inst_oid);
+      void abort_pending_repl_objects ();
 
       stream_entry *get_stream_entry (void);
 
