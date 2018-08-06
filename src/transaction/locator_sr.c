@@ -57,6 +57,7 @@
 #include "dbtype.h"
 #include "thread_manager.hpp"	// for thread_get_thread_entry_info
 #include "replication_object.hpp"
+#include "log_generator.hpp"
 
 /* TODO : remove */
 extern bool catcls_Enable;
@@ -7870,15 +7871,10 @@ locator_add_or_remove_index_internal (THREAD_ENTRY * thread_p, RECDES * recdes, 
       if (need_replication && index->type == BTREE_PRIMARY_KEY && error_code == NO_ERROR
 	  && !LOG_CHECK_LOG_APPLIER (thread_p) && log_does_allow_replication () == true)
 	{
-#if 0
 	  error_code =
-	    repl_log_insert (thread_p, class_oid, inst_oid, datayn ? LOG_REPLICATION_DATA : LOG_REPLICATION_STATEMENT,
-			     is_insert ? RVREPL_DATA_INSERT : RVREPL_DATA_DELETE, key_dbvalue,
-			     REPL_INFO_TYPE_RBR_NORMAL);
-#endif
-	  error_code = repl_log_insert_with_recdes (thread_p, classname,
-						    is_insert ? RVREPL_DATA_INSERT : RVREPL_DATA_DELETE,
-						    key_dbvalue, recdes);
+	    cubreplication::repl_log_insert_with_recdes (thread_p, classname,
+							 is_insert ? RVREPL_DATA_INSERT : RVREPL_DATA_DELETE,
+							 key_dbvalue, recdes);
 	}
       if (error_code != NO_ERROR)
 	{
@@ -11581,14 +11577,14 @@ locator_decrease_catalog_count (THREAD_ENTRY * thread_p, OID * cls_oid)
 #endif /* ENABLE_UNUSED_FUNCTION */
 
 /*
- * xrepl_set_info () -
+ * xrepl_statement () -
  *
  * return:
  *
  *   repl_info(in):
  */
 int
-xrepl_set_info (THREAD_ENTRY * thread_p, REPL_INFO * repl_info)
+xrepl_statement (THREAD_ENTRY * thread_p, REPL_INFO * repl_info)
 {
   int error_code = NO_ERROR;
 
@@ -11597,7 +11593,7 @@ xrepl_set_info (THREAD_ENTRY * thread_p, REPL_INFO * repl_info)
       switch (repl_info->repl_info_type)
 	{
 	case REPL_INFO_TYPE_SBR:
-	  error_code = repl_log_insert_statement (thread_p, (REPL_INFO_SBR *) repl_info->info);
+	  error_code = cubreplication::repl_log_insert_statement (thread_p, (REPL_INFO_SBR *) repl_info->info);
 	  break;
 	default:
 	  error_code = ER_REPL_ERROR;
@@ -12539,7 +12535,7 @@ xchksum_insert_repl_log_and_demote_table_lock (THREAD_ENTRY * thread_p, REPL_INF
 
   repl_start_flush_mark (thread_p);
 
-  error = xrepl_set_info (thread_p, repl_info);
+  error = xrepl_statement (thread_p, repl_info);
 
   repl_end_flush_mark (thread_p, false);
 

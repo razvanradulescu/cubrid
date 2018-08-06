@@ -66,6 +66,8 @@
 #include "db_json.hpp"
 #include "dbtype.h"
 #include "thread_entry.hpp"
+#include "thread_manager.hpp"	/* for thread_get_thread_entry_info */
+#include <algorithm>
 
 #define GOTO_EXIT_ON_ERROR \
   do \
@@ -557,6 +559,8 @@ static const char *qexec_schema_get_type_name_from_id (DB_TYPE id);
 static int qexec_schema_get_type_desc (DB_TYPE id, TP_DOMAIN * domain, DB_VALUE * result);
 static int qexec_execute_build_columns (THREAD_ENTRY * thread_p, XASL_NODE * xasl, XASL_STATE * xasl_state);
 static int qexec_execute_cte (THREAD_ENTRY * thread_p, XASL_NODE * xasl, XASL_STATE * xasl_state);
+static void qexec_revert_pending_repl_objects (UPDATE_PROC_NODE * update,
+					       UPDDEL_CLASS_INFO_INTERNAL * internal_classes);
 
 #if defined(SERVER_MODE)
 #if defined (ENABLE_UNUSED_FUNCTION)
@@ -9299,6 +9303,7 @@ exit_on_error:
 
   if (internal_classes)
     {
+      qexec_revert_pending_repl_objects (update, internal_classes);
       qexec_clear_internal_classes (thread_p, internal_classes, class_oid_cnt);
       db_private_free_and_init (thread_p, internal_classes);
     }
@@ -25108,4 +25113,52 @@ qexec_locate_agg_hentry_in_list (THREAD_ENTRY * thread_p, AGGREGATE_HASH_CONTEXT
   /* reached end of scan, no match */
   *found = false;
   return (context->part_scan_code == S_ERROR ? ER_FAILED : NO_ERROR);
+}
+
+static void
+qexec_revert_pending_repl_objects (UPDATE_PROC_NODE * update, UPDDEL_CLASS_INFO_INTERNAL * internal_classes)
+{
+  LOG_TDES *log_tdes = NULL;
+  THREAD_ENTRY *thread_p = NULL;
+  UPDDEL_CLASS_INFO *upd_cls = NULL;
+  UPDATE_ASSIGNMENT *assign = NULL;
+  int class_oid_idx = 0;
+  int rc;
+  std::vector < OID > distinct_oids;
+
+  thread_p = thread_get_thread_entry_info ();
+  assert (thread_p != NULL);
+  log_tdes = LOG_FIND_CURRENT_TDES (thread_p);
+
+  for (int assign_idx = 0; assign_idx < update->num_assigns; assign_idx++)
+    {
+      HEAP_CACHE_ATTRINFO *attr_info;
+      OID *inst_oid;
+      UPDDEL_CLASS_INFO_INTERNAL *internal_class;
+
+      assign = &update->assigns[assign_idx];
+      class_oid_idx = assign->cls_idx;
+      internal_class = &internal_classes[class_oid_idx];
+      attr_info = &internal_class->attr_info;
+      upd_cls = &update->classes[class_oid_idx];
+      inst_oid = internal_class->oid;
+
+      auto oid_it = std::find_if (distinct_oids.begin (), distinct_oids.end (),
+				  [&inst_oid] (OID & oid) { return oid.pageid == inst_oid->pageid &&
+				  oid.slotid == inst_oid->slotid && oid.volid == inst_oid->volid;
+				  }
+      );
+
+      if (oid_it == distinct_oids.end ())
+	{
+	  rc = log_tdes->replication_log_generator.revert_last_pending_by_oid (inst_oid);
+
+	  if (rc != NO_ERROR)
+	    {
+	      assert (false);
+	    }
+
+	  distinct_oids.push_back (*inst_oid);
+	}
+    }
 }

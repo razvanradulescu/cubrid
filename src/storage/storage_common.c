@@ -433,7 +433,7 @@ int recdes::pack (cubpacking::packer *packer)
 {
   int rc = NO_ERROR;
 
-  rc = packer->pack_stream (data, length);
+  rc = packer->pack_buffer_with_length (data, length);
   if (rc != NO_ERROR)
     {
       assert (false);
@@ -447,7 +447,7 @@ int recdes::unpack (cubpacking::packer *packer)
 {
   int rc = NO_ERROR;
 
-  rc = packer->unpack_stream (data, length);
+  rc = packer->unpack_buffer_with_length (data, length);
   if (rc != NO_ERROR)
     {
       assert (false);
@@ -457,9 +457,9 @@ int recdes::unpack (cubpacking::packer *packer)
   return NO_ERROR;
 }
 
-std::size_t recdes::get_packed_size (std::size_t curr_offset)
+std::size_t recdes::get_packed_size (cubpacking::packer *packer, std::size_t curr_offset)
 {
-  return cubpacking::packer::get_packed_stream_size (data, length, curr_offset);
+  return packer->get_packed_buffer_size (data, length, curr_offset);
 }
 #endif
 /* *INDENT-ON* */

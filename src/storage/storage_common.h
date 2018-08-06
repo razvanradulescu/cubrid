@@ -357,7 +357,7 @@ struct recdes
 #if defined (__cplusplus)
   int pack (cubpacking::packer *packer);
   int unpack (cubpacking::packer *packer);
-  std::size_t get_packed_size (std::size_t curr_offset);
+  std::size_t get_packed_size (cubpacking::packer *packer, std::size_t curr_offset);
 #endif
 /* *INDENT-ON* */
 };

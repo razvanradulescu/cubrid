@@ -37,6 +37,11 @@ namespace cubreplication
 					      "delete"
 					     };
 
+  single_row_repl_entry::single_row_repl_entry (const REPL_ENTRY_TYPE type, const char *class_name) :  m_type (type),
+    m_class_name (class_name)
+  {
+  }
+
   single_row_repl_entry::~single_row_repl_entry ()
   {
     //TODO[arnia] optimize
@@ -124,22 +129,22 @@ namespace cubreplication
     return NO_ERROR;
   }
 
-  void single_row_repl_entry::stringify (string_buffer &str, const char *additional_msg)
+  void single_row_repl_entry::stringify (string_buffer &str)
   {
     char *key_to_string = pr_valstring (NULL, &m_key_value);
 
     str ("type=%s key_dbvalue=%s table=%s\n", repl_entry_type_str[m_type], key_to_string,
 	 m_class_name.c_str ());
 
-    if (additional_msg != NULL)
-      {
-	str ("additional message=%s\n", additional_msg);
-      }
-
     db_private_free (NULL, key_to_string);
   }
 
   /////////////////////////////////
+  sbr_repl_entry::sbr_repl_entry (const char *statement, const char *user,
+				  const char *sys_prm_ctx) : m_statement (statement), m_db_user (user), m_sys_prm_context (sys_prm_ctx)
+  {
+  }
+
   int sbr_repl_entry::apply (void)
   {
     /* TODO */
@@ -158,12 +163,14 @@ namespace cubreplication
     return true;
   }
 
-  std::size_t sbr_repl_entry::get_packed_size (cubpacking::packer *serializator)
+  std::size_t sbr_repl_entry::get_packed_size (cubpacking::packer *serializator, std::size_t start_offset)
   {
     /* we assume that offset start has already MAX_ALIGNMENT */
 
     /* type of packed object */
-    std::size_t entry_size = serializator->get_packed_int_size (0);
+    std::size_t entry_size = start_offset;
+
+    entry_size += serializator->get_packed_int_size (0);
 
     entry_size += serializator->get_packed_string_size (m_statement, entry_size);
     entry_size += serializator->get_packed_string_size (m_db_user, entry_size);
@@ -194,14 +201,9 @@ namespace cubreplication
     return NO_ERROR;
   }
 
-  void sbr_repl_entry::stringify (string_buffer &str, const char *additional_msg)
+  void sbr_repl_entry::stringify (string_buffer &str)
   {
     str ("sbr_repl_entry: statement=%s\n", m_statement.c_str ());
-
-    if (additional_msg != NULL)
-      {
-	str ("additional message=%s\n", additional_msg);
-      }
   }
 
   changed_attrs_row_repl_entry::~changed_attrs_row_repl_entry ()
@@ -297,12 +299,14 @@ namespace cubreplication
     return NO_ERROR;
   }
 
-  std::size_t changed_attrs_row_repl_entry::get_packed_size (cubpacking::packer *serializator)
+  std::size_t changed_attrs_row_repl_entry::get_packed_size (cubpacking::packer *serializator, std::size_t start_offset)
   {
     /* we assume that offset start has already MAX_ALIGNMENT */
 
     /* type of packed object */
-    std::size_t entry_size = serializator->get_packed_int_size (0);
+    std::size_t entry_size = start_offset;
+
+    entry_size += serializator->get_packed_int_size (0);
 
     entry_size = single_row_repl_entry::get_packed_size (serializator, entry_size);
 
@@ -355,7 +359,7 @@ namespace cubreplication
     return true;
   }
 
-  void changed_attrs_row_repl_entry::stringify (string_buffer &str, const char *additional_msg)
+  void changed_attrs_row_repl_entry::stringify (string_buffer &str)
   {
     str ("changed_attrs_row_repl_entry:\n");
 
@@ -371,7 +375,17 @@ namespace cubreplication
 
     str ("inst oid: pageid:%d slotid:%d volid:%d\n", m_inst_oid.pageid, m_inst_oid.slotid, m_inst_oid.volid);
 
-    single_row_repl_entry::stringify (str, additional_msg);
+    single_row_repl_entry::stringify (str);
+  }
+
+  changed_attrs_row_repl_entry::changed_attrs_row_repl_entry (REPL_ENTRY_TYPE type,
+      const char *class_name,
+      const OID *inst_oid) : single_row_repl_entry (type, class_name)
+  {
+    if (inst_oid != NULL)
+      {
+	m_inst_oid = *inst_oid;
+      }
   }
 
   int rec_des_row_repl_entry::pack (cubpacking::packer *serializator)
@@ -420,15 +434,17 @@ namespace cubreplication
     return NO_ERROR;
   }
 
-  std::size_t rec_des_row_repl_entry::get_packed_size (cubpacking::packer *serializator)
+  std::size_t rec_des_row_repl_entry::get_packed_size (cubpacking::packer *serializator, std::size_t start_offset)
   {
     /* we assume that offset start has already MAX_ALIGNMENT */
 
     /* type of packed object */
-    std::size_t entry_size = serializator->get_packed_int_size (0);
+    std::size_t entry_size = start_offset;
+
+    entry_size += serializator->get_packed_int_size (0);
 
     entry_size = single_row_repl_entry::get_packed_size (serializator, entry_size);
-    entry_size += m_rec_des.get_packed_size (entry_size);
+    entry_size += m_rec_des.get_packed_size (serializator, entry_size);
 
     return entry_size;
   }
@@ -468,6 +484,32 @@ namespace cubreplication
     return true;
   }
 
+  rec_des_row_repl_entry::rec_des_row_repl_entry (REPL_ENTRY_TYPE type,
+      const char *class_name,
+      RECDES *rec_des) : single_row_repl_entry (type, class_name)
+  {
+    if (type != cubreplication::REPL_ENTRY_TYPE::REPL_DELETE)
+      {
+	assert (rec_des != NULL);
+
+	m_rec_des.length = rec_des->length;
+	m_rec_des.area_size = rec_des->area_size;
+	m_rec_des.type = rec_des->type;
+
+	m_rec_des.data = (char *) malloc (m_rec_des.length);
+	if (m_rec_des.data == NULL)
+	  {
+	    assert (false);
+	  }
+	memcpy (m_rec_des.data, rec_des->data, m_rec_des.length);
+      }
+    else
+      {
+	memset (&m_rec_des, 0, sizeof (m_rec_des));
+      }
+
+  }
+
   rec_des_row_repl_entry::~rec_des_row_repl_entry ()
   {
     if (m_rec_des.data != NULL)
@@ -476,7 +518,7 @@ namespace cubreplication
       }
   }
 
-  void rec_des_row_repl_entry::stringify (string_buffer &str, const char *additional_msg)
+  void rec_des_row_repl_entry::stringify (string_buffer &str)
   {
     str ("rec_des_row_repl_entry:\n");
 
@@ -485,7 +527,7 @@ namespace cubreplication
 	str ("recdes length=%d\n", m_rec_des.length);
       }
 
-    single_row_repl_entry::stringify (str, additional_msg);
+    single_row_repl_entry::stringify (str);
   }
 
 } /* namespace cubreplication */

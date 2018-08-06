@@ -28,11 +28,19 @@
 
 #include "replication_stream_entry.hpp"
 #include "storage_common.h"
+#include "recovery.h"
 
 namespace cubstream
 {
   class multi_thread_stream;
 }
+
+namespace cubthread
+{
+  class entry;
+}
+
+struct REPL_INFO_SBR;
 
 namespace cubreplication
 {
@@ -70,15 +78,19 @@ namespace cubreplication
       int set_commit_repl (bool commit_tran_flag);
 
       int append_repl_object (replication_object *object);
-      void append_pending_repl_object (changed_attrs_row_repl_entry *object);
       int append_pending_repl_object (cubthread::entry &thread_entry, const OID *class_oid, const OID *inst_oid,
 				      ATTR_ID col_id, DB_VALUE *value);
       int set_key_to_repl_object (DB_VALUE *key, const OID *inst_oid, char *class_name,
 				  RECDES *optional_recdes);
+      int set_key_to_repl_object (DB_VALUE *key, const OID *inst_oid,
+				  const OID *class_oid, RECDES *optional_recdes);
+      int revert_last_pending_by_oid (const OID *inst_oid);
 
       stream_entry *get_stream_entry (void);
 
       int pack_stream_entry (void);
+
+      void er_log_repl_obj (replication_object *obj, const char *message);
 
       static void pack_group_commit_entry (void);
 
@@ -89,6 +101,10 @@ namespace cubreplication
 	return g_stream;
       };
   };
+
+  extern int repl_log_insert_with_recdes (THREAD_ENTRY *thread_p, const char *class_name, LOG_RCVINDEX rcvindex,
+					  DB_VALUE  *key_dbvalue, RECDES *recdes);
+  extern int repl_log_insert_statement (THREAD_ENTRY *thread_p, REPL_INFO_SBR *repl_info);
 
 } /* namespace cubreplication */
 

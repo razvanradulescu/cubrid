@@ -142,8 +142,8 @@ namespace test_replication
 
     cubthread::entry *my_thread = thread_get_thread_entry_info ();
 
-    cubreplication::sbr_repl_entry *sbr1 = new cubreplication::sbr_repl_entry;
-    cubreplication::sbr_repl_entry *sbr2 = new cubreplication::sbr_repl_entry;
+    cubreplication::sbr_repl_entry *sbr1 = new cubreplication::sbr_repl_entry ("CREATE TABLE t1 (i1 int)", "", "");
+    cubreplication::sbr_repl_entry *sbr2 = new cubreplication::sbr_repl_entry ("CREATE TABLE t2 (i1 int)", "", "");
     cubreplication::changed_attrs_row_repl_entry *rbr1 =
       new cubreplication::changed_attrs_row_repl_entry (cubreplication::REPL_UPDATE, "t1");
     cubreplication::changed_attrs_row_repl_entry *rbr2 =
@@ -158,9 +158,6 @@ namespace test_replication
     db_make_int (&new_att1_value, 2);
     db_make_char (&new_att2_value, 4, "test", 4, INTL_CODESET_ISO88591, LANG_COLL_ISO_BINARY);
     db_make_char (&new_att3_value, 5, "test2", 5, INTL_CODESET_ISO88591, LANG_COLL_ISO_BINARY);
-
-    sbr1->set_statement ("CREATE TABLE t1 (i1 int)");
-    sbr2->set_statement ("CREATE TABLE t2 (i1 int)");
 
     rbr1->set_key_value (&key_value);
     rbr1->copy_and_add_changed_value (1, &new_att2_value);
@@ -238,7 +235,8 @@ namespace test_replication
 			      tran_chunk)
 			    + std::string ("O") + std::to_string (tran_obj);
 
-    cubreplication::sbr_repl_entry *sbr = new cubreplication::sbr_repl_entry (statement, "test_user", "test_sys_prm_ctx");
+    cubreplication::sbr_repl_entry *sbr = new cubreplication::sbr_repl_entry (statement.c_str (), "test_user",
+	"test_sys_prm_ctx");
 
     lg->append_repl_object (sbr);
   }
