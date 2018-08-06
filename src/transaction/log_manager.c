@@ -75,6 +75,7 @@
 #include "thread_daemon.hpp"
 #include "thread_entry_task.hpp"
 #include "thread_manager.hpp"
+#include "replication_stream_entry.hpp"
 
 #include "dbtype.h"
 
@@ -5769,6 +5770,7 @@ log_commit (THREAD_ENTRY * thread_p, int tran_index, bool retain_lock)
 
   if (tdes->suppress_replication == 0)
     {
+      tdes->replication_log_generator.set_repl_state (cubreplication::stream_entry_header::COMMITTED);
       tdes->replication_log_generator.pack_stream_entry ();
     }
 
@@ -5876,6 +5878,11 @@ log_abort (THREAD_ENTRY * thread_p, int tran_index)
        */
       state = log_abort_local (thread_p, tdes, true);
       state = log_complete (thread_p, tdes, LOG_ABORT, LOG_NEED_NEWTRID, LOG_NEED_TO_WRITE_EOT_LOG);
+    }
+
+  if (tdes->suppress_replication == 0)
+    {
+      tdes->replication_log_generator.set_repl_state (cubreplication::stream_entry_header::ABORTED);
     }
 
   perfmon_inc_stat (thread_p, PSTAT_TRAN_NUM_ROLLBACKS);
