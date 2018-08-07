@@ -66,8 +66,6 @@
 #include "db_json.hpp"
 #include "dbtype.h"
 #include "thread_entry.hpp"
-#include "thread_manager.hpp"	/* for thread_get_thread_entry_info */
-#include <algorithm>
 
 #define GOTO_EXIT_ON_ERROR \
   do \
@@ -25116,4 +25114,3 @@ qexec_locate_agg_hentry_in_list (THREAD_ENTRY * thread_p, AGGREGATE_HASH_CONTEXT
   *found = false;
   return (context->part_scan_code == S_ERROR ? ER_FAILED : NO_ERROR);
 }
-
