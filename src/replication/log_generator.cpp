@@ -65,6 +65,10 @@ namespace cubreplication
     return NO_ERROR;
   }
 
+  /* in case inst_oid is not found, create a new entry and append it to pending,
+   * else, add value and col_id to it
+   * later, when setting key_dbvalue to it, move it to m_stream_entry
+   */
   int log_generator::append_pending_repl_object (cubthread::entry &thread_entry, const OID *class_oid,
       const OID *inst_oid, ATTR_ID col_id, DB_VALUE *value)
   {
@@ -113,6 +117,10 @@ namespace cubreplication
     return NO_ERROR;
   }
 
+  /* set key_dbvalue to inst_oid associated entry and, if not found,
+   * it means we are in a special case where update uses recdes, instead
+   * of changed db values
+   */
   int log_generator::set_key_to_repl_object (DB_VALUE *key, const OID *inst_oid,
       char *class_name, RECDES *optional_recdes)
   {
@@ -159,6 +167,7 @@ namespace cubreplication
     return NO_ERROR;
   }
 
+  /* first fetch the class name, then set key */
   int log_generator::set_key_to_repl_object (DB_VALUE *key, const OID *inst_oid,
       const OID *class_oid, RECDES *optional_recdes)
   {
@@ -183,6 +192,7 @@ namespace cubreplication
     return NO_ERROR;
   }
 
+  /* in case of error, abort all pending repl objects */
   void log_generator::abort_pending_repl_objects ()
   {
     for (changed_attrs_row_repl_entry *entry : m_pending_to_be_added)
