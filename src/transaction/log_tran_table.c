@@ -352,7 +352,9 @@ logtb_expand_trantable (THREAD_ENTRY * thread_p, int num_new_indices)
   error_code = wfg_alloc_nodes (thread_p, total_indices);
   if (error_code != NO_ERROR)
     {
-      delete[]area->tdesarea;
+      /* *INDENT-OFF* */
+      delete[] area->tdesarea;
+      /* *INDENT-ON* */
       free_and_init (area);
       goto error;
     }
@@ -366,7 +368,9 @@ logtb_expand_trantable (THREAD_ENTRY * thread_p, int num_new_indices)
 	(MVCCID *) realloc ((void *) mvcc_table->transaction_lowest_active_mvccids, total_indices * sizeof (MVCCID));
       if (mvcc_table->transaction_lowest_active_mvccids == NULL)
 	{
-	  delete[]area->tdesarea;
+	  /* *INDENT-OFF* */
+	  delete[] area->tdesarea;
+	  /* *INDENT-ON* */
 	  free_and_init (area);
 	  error_code = ER_OUT_OF_VIRTUAL_MEMORY;
 	  er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_OUT_OF_VIRTUAL_MEMORY, 1, total_indices * sizeof (MVCCID));
@@ -377,7 +381,9 @@ logtb_expand_trantable (THREAD_ENTRY * thread_p, int num_new_indices)
 
   if (qmgr_allocate_tran_entries (thread_p, total_indices) != NO_ERROR)
     {
-      delete[]area->tdesarea;
+      /* *INDENT-OFF* */
+      delete[] area->tdesarea;
+      /* *INDENT-ON* */
       free_and_init (area);
       error_code = ER_FAILED;
       goto error;
@@ -688,7 +694,9 @@ logtb_undefine_trantable (THREAD_ENTRY * thread_p)
       while (area != NULL)
 	{
 	  log_Gl.trantable.area = area->next;
-	  delete[]area->tdesarea;
+	  /* *INDENT-OFF* */
+	  delete[] area->tdesarea;
+	  /* *INDENT-ON* */
 	  free_and_init (area);
 	  area = log_Gl.trantable.area;
 	}

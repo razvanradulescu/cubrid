@@ -23,7 +23,6 @@
 
 #ident "$Id$"
 
-#include <algorithm>
 #include "log_generator.hpp"
 #include "replication_stream_entry.hpp"
 #include "multi_thread_stream.hpp"
