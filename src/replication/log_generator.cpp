@@ -186,6 +186,10 @@ namespace cubreplication
 
   void log_generator::abort_pending_repl_objects ()
   {
+    for (changed_attrs_row_repl_entry *entry : m_pending_to_be_added)
+      {
+	delete entry;
+      }
     m_pending_to_be_added.clear ();
   }
 
