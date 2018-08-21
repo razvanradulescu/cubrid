@@ -2983,6 +2983,7 @@ fileio_mount (THREAD_ENTRY * thread_p, const char *db_full_name_p, const char *v
 #else /* WINDOWS */
   int vol_fd;
   int o_sync;
+  int o_direct = 0;
   FILEIO_LOCKF_TYPE lockf_type = FILEIO_NOT_LOCKF;
   bool is_do_wait;
   struct stat stat_buf;
@@ -3001,10 +3002,14 @@ fileio_mount (THREAD_ENTRY * thread_p, const char *db_full_name_p, const char *v
 #endif /* !CS_MODE */
 
   o_sync = (is_do_sync != false) ? O_SYNC : 0;
+  if (vol_id >= LOG_DBFIRST_VOLID && prm_get_bool_value (PRM_ID_DATA_FILE_DIRECT_ACCESS) == true)
+    {
+      o_direct = O_DIRECT;
+    }
 
   /* OPEN THE DISK VOLUME PARTITION OR FILE SIMULATED VOLUME */
 start:
-  vol_fd = fileio_open (vol_label_p, O_RDWR | o_sync, 0600);
+  vol_fd = fileio_open (vol_label_p, O_RDWR | o_sync | o_direct, 0600);
   if (vol_fd == NULL_VOLDES)
     {
       er_set_with_oserror (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_IO_MOUNT_FAIL, 1, vol_label_p);

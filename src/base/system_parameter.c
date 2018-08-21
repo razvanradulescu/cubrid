@@ -638,6 +638,7 @@ static const char sysprm_ha_conf_file_name[] = "cubrid_ha.conf";
 #define PRM_NAME_ENABLE_DWB_FLUSH_THREAD "double_write_buffer_enable_flush_thread"
 #define PRM_NAME_ENABLE_DWB_CHECKSUM_THREAD "double_write_buffer_enable_checksum_thread"
 #define PRM_NAME_DWB_LOGGING "double_write_buffer_logging"
+#define PRM_NAME_DATA_FILE_DIRECT_ACCESS "data_file_direct_access"
 
 #define PRM_NAME_JSON_LOG_ALLOCATIONS "json_log_allocations"
 
@@ -943,7 +944,7 @@ static unsigned int prm_pb_nbuffers_flag = 0;
 
 float PRM_PB_BUFFER_FLUSH_RATIO = 0.01f;
 static float prm_pb_buffer_flush_ratio_default = 0.01f;
-static float prm_pb_buffer_flush_ratio_lower = 0.01f;
+static float prm_pb_buffer_flush_ratio_lower = 0.001f;
 static float prm_pb_buffer_flush_ratio_upper = 0.95f;
 static unsigned int prm_pb_buffer_flush_ratio_flag = 0;
 
@@ -2169,6 +2170,11 @@ static unsigned int prm_enable_dwb_checksum_thread_flag = 0;
 bool PRM_DWB_LOGGING = false;
 static bool prm_dwb_logging_default = false;
 static unsigned int prm_dwb_logging_flag = 0;
+
+bool PRM_DATA_FILE_DIRECT_ACCESS = false;
+static bool prm_data_file_direct_access_default = false;
+static unsigned int prm_data_file_direct_access_flag = false;
+
 
 UINT64 PRM_REPL_GENERATOR_BUFFER_SIZE = 10 * 1024 * 1024;
 static UINT64 prm_repl_generator_buffer_size_default = 10 * 1024 * 1024;
@@ -5565,6 +5571,17 @@ static SYSPRM_PARAM prm_Def[] = {
    &prm_dwb_logging_flag,
    (void *) &prm_dwb_logging_default,
    (void *) &PRM_DWB_LOGGING,
+   (void *) NULL, (void *) NULL,
+   (char *) NULL,
+   (DUP_PRM_FUNC) NULL,
+   (DUP_PRM_FUNC) NULL},
+  {PRM_ID_DATA_FILE_DIRECT_ACCESS,
+   PRM_NAME_DATA_FILE_DIRECT_ACCESS,
+   (PRM_FOR_SERVER | PRM_USER_CHANGE),
+   PRM_BOOLEAN,
+   &prm_data_file_direct_access_flag,
+   (void *) &prm_data_file_direct_access_default,
+   (void *) &PRM_DATA_FILE_DIRECT_ACCESS,
    (void *) NULL, (void *) NULL,
    (char *) NULL,
    (DUP_PRM_FUNC) NULL,
