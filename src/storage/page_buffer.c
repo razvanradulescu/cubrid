@@ -4928,7 +4928,7 @@ pgbuf_initialize_bcb_table (void)
       return ER_OUT_OF_VIRTUAL_MEMORY;
     }
 
-  pgbuf_Pool.iopage_table = PTR_ALIGN (pgbuf_Pool.iopage_table_a, 512);
+  pgbuf_Pool.iopage_table = (PGBUF_IOPAGE_BUFFER*) PTR_ALIGN (pgbuf_Pool.iopage_table_a, 512);
 
   /* initialize each entry of the buffer BCB table */
   for (i = 0; i < pgbuf_Pool.num_buffers; i++)
