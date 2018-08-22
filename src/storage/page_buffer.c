@@ -9834,7 +9834,7 @@ pgbuf_remove_private_from_aout_list (const int lru_idx)
 STATIC_INLINE int
 pgbuf_bcb_flush_with_wal (THREAD_ENTRY * thread_p, PGBUF_BCB * bufptr, bool is_page_flush_thread, bool * is_bcb_locked)
 {
-  char page_buf[IO_MAX_PAGE_SIZE + MAX_ALIGNMENT];
+  char page_buf[IO_MAX_PAGE_SIZE + 512];
   FILEIO_PAGE *iopage;
   LOG_LSA oldest_unflush_lsa;
   int error = NO_ERROR;
@@ -9914,7 +9914,7 @@ start_copy_page:
 	}
     }
 
-  iopage = (FILEIO_PAGE *) PTR_ALIGN (page_buf, MAX_ALIGNMENT);
+  iopage = (FILEIO_PAGE *) PTR_ALIGN (page_buf, 512);
   memcpy ((void *) iopage, (void *) (&bufptr->iopage_buffer->iopage), IO_PAGESIZE);
 
 copy_unflushed_lsa:
