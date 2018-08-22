@@ -540,11 +540,7 @@ struct pgbuf_bcb
 struct pgbuf_iopage_buffer
 {
   PGBUF_BCB *bcb;		/* pointer to BCB structure */
-#if (__WORDSIZE == 32)
-  int dummy;			/* for 8byte align of iopage */
-#elif !defined(LINUX) && !defined(WINDOWS) && !defined(AIX)
-#error "you must check that iopage is aligned by 8byte !!"
-#endif
+  char dummy[504];              /* to align buffer to 512 */
   FILEIO_PAGE iopage;		/* The actual buffered io page */
 };
 
@@ -4920,7 +4916,7 @@ pgbuf_initialize_bcb_table (void)
 	}
       return ER_PRM_BAD_VALUE;
     }
-  pgbuf_Pool.iopage_table = (PGBUF_IOPAGE_BUFFER *) malloc ((size_t) alloc_size);
+  pgbuf_Pool.iopage_table = (PGBUF_IOPAGE_BUFFER *) aligned_alloc (512, (size_t) alloc_size);
   if (pgbuf_Pool.iopage_table == NULL)
     {
       er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_OUT_OF_VIRTUAL_MEMORY, 1, (size_t) alloc_size);
@@ -4969,6 +4965,7 @@ pgbuf_initialize_bcb_table (void)
 
       /* link BCB and iopage buffer */
       ioptr = PGBUF_FIND_IOPAGE_PTR (i);
+      ASSERT_ALIGN ((char* )ioptr, 512);
 
       LSA_SET_NULL (&ioptr->iopage.prv.lsa);
 
