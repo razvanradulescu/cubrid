@@ -541,7 +541,7 @@ struct pgbuf_iopage_buffer
 {
   PGBUF_BCB *bcb;		/* pointer to BCB structure */
   char dummy[504];              /* to align buffer to 512 */
-  FILEIO_PAGE iopage1;		/* The actual buffered io page */
+  FILEIO_PAGE iopage;		/* The actual buffered io page */
 };
 
 /* buffer lock record (or entry) structure
