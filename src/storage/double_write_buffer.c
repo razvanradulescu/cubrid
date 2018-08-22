@@ -1514,10 +1514,10 @@ dwb_create_blocks (THREAD_ENTRY * thread_p, unsigned int num_blocks, unsigned in
     }
   memset (blocks, 0, num_blocks * sizeof (DWB_BLOCK));
 
-  block_buffer_size = num_block_pages * IO_PAGESIZE;
+  block_buffer_size = num_block_pages * IO_PAGESIZE + 512;
   for (i = 0; i < num_blocks; i++)
     {
-      blocks_write_buffer[i] = (char *) aligned_alloc (512, block_buffer_size * sizeof (char));
+      blocks_write_buffer[i] = (char *) malloc (block_buffer_size * sizeof (char));
       if (blocks_write_buffer[i] == NULL)
 	{
 	  er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_OUT_OF_VIRTUAL_MEMORY, 1, block_buffer_size * sizeof (char));
@@ -1525,6 +1525,7 @@ dwb_create_blocks (THREAD_ENTRY * thread_p, unsigned int num_blocks, unsigned in
 	  goto exit_on_error;
 	}
       memset (blocks_write_buffer[i], 0, block_buffer_size * sizeof (char));
+      blocks_write_buffer[i] = PTR_ALIGN (blocks_write_buffer[i], 512);
     }
 
   for (i = 0; i < num_blocks; i++)
