@@ -752,6 +752,7 @@ struct pgbuf_buffer_pool
   PGBUF_BUFFER_HASH *buf_hash_table;	/* buffer hash table */
   PGBUF_BUFFER_LOCK *buf_lock_table;	/* buffer lock table */
   PGBUF_IOPAGE_BUFFER *iopage_table;	/* IO page table */
+  PGBUF_IOPAGE_BUFFER *iopage_table_a;	/* IO page table */
   int num_LRU_list;		/* number of shared LRU lists */
   float ratio_lru1;		/* ratio for lru 1 zone */
   float ratio_lru2;		/* ratio for lru 2 zone */
@@ -1556,9 +1557,9 @@ pgbuf_finalize (void)
       pgbuf_Pool.num_buffers = 0;
     }
 
-  if (pgbuf_Pool.iopage_table != NULL)
+  if (pgbuf_Pool.iopage_table_a != NULL)
     {
-      free_and_init (pgbuf_Pool.iopage_table);
+      free_and_init (pgbuf_Pool.iopage_table_a);
     }
 
   /* final task for LRU list */
@@ -4916,8 +4917,8 @@ pgbuf_initialize_bcb_table (void)
 	}
       return ER_PRM_BAD_VALUE;
     }
-  pgbuf_Pool.iopage_table = (PGBUF_IOPAGE_BUFFER *) aligned_alloc (512, (size_t) alloc_size);
-  if (pgbuf_Pool.iopage_table == NULL)
+  pgbuf_Pool.iopage_table_a = (PGBUF_IOPAGE_BUFFER *) malloc ((size_t) alloc_size + 512);
+  if (pgbuf_Pool.iopage_table_a == NULL)
     {
       er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_OUT_OF_VIRTUAL_MEMORY, 1, (size_t) alloc_size);
       if (pgbuf_Pool.BCB_table != NULL)
@@ -4926,6 +4927,8 @@ pgbuf_initialize_bcb_table (void)
 	}
       return ER_OUT_OF_VIRTUAL_MEMORY;
     }
+
+   pgbuf_Pool.iopage_table = (PGBUF_IOPAGE_BUFFER *) PTR_ALIGN ( pgbuf_Pool.iopage_table_a, 512);
 
   /* initialize each entry of the buffer BCB table */
   for (i = 0; i < pgbuf_Pool.num_buffers; i++)

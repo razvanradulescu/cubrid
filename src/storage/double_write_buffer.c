@@ -290,6 +290,7 @@ struct double_write_block
   DWB_WAIT_QUEUE wait_queue;	/* The wait queue for the current block. */
 
   char *write_buffer;		/* The block write buffer, used to write all pages once. */
+  char *write_buffer_a;		/* The block write buffer, used to write all pages once. */
   DWB_SLOT *slots;		/* The slots containing the data. Used to write individual pages. */
   volatile unsigned int count_wb_pages;	/* Count the pages added to write buffer. */
 
@@ -439,7 +440,7 @@ STATIC_INLINE int dwb_create_slots_hash (THREAD_ENTRY * thread_p, DWB_SLOTS_HASH
   __attribute__ ((ALWAYS_INLINE));
 STATIC_INLINE void dwb_finalize_slots_hash (DWB_SLOTS_HASH * slots_hash) __attribute__ ((ALWAYS_INLINE));
 STATIC_INLINE void dwb_initialize_block (DWB_BLOCK * block, unsigned int block_no,
-					 unsigned int count_wb_pages, char *write_buffer, DWB_SLOT * slots,
+					 unsigned int count_wb_pages, char *write_buffer_a, char *write_buffer, DWB_SLOT * slots,
 					 FLUSH_VOLUME_INFO * flush_volumes_info, unsigned int count_flush_volumes_info,
 					 unsigned int max_to_flush_vdes) __attribute__ ((ALWAYS_INLINE));
 STATIC_INLINE int dwb_create_blocks (THREAD_ENTRY * thread_p, unsigned int num_blocks, unsigned int num_block_pages,
@@ -1452,7 +1453,8 @@ dwb_finalize_slots_hash (DWB_SLOTS_HASH * slots_hash)
  * max_to_flush_vdes(in): The maximum volumes to flush.
  */
 STATIC_INLINE void
-dwb_initialize_block (DWB_BLOCK * block, unsigned int block_no, unsigned int count_wb_pages, char *write_buffer,
+dwb_initialize_block (DWB_BLOCK * block, unsigned int block_no, unsigned int count_wb_pages, char *write_buffer_a,
+                      char *write_buffer,
 		      DWB_SLOT * slots, FLUSH_VOLUME_INFO * flush_volumes_info, unsigned int count_flush_volumes_info,
 		      unsigned int max_to_flush_vdes)
 {
@@ -1465,6 +1467,7 @@ dwb_initialize_block (DWB_BLOCK * block, unsigned int block_no, unsigned int cou
   pthread_mutex_init (&block->mutex, NULL);
   dwb_init_wait_queue (&block->wait_queue);
 
+  block->write_buffer_a = write_buffer_a;
   block->write_buffer = write_buffer;
   block->slots = slots;
   block->count_wb_pages = count_wb_pages;
@@ -1488,6 +1491,7 @@ dwb_create_blocks (THREAD_ENTRY * thread_p, unsigned int num_blocks, unsigned in
 {
   DWB_BLOCK *blocks = NULL;
   char *blocks_write_buffer[DWB_MAX_BLOCKS];
+  char *blocks_write_buffer_a[DWB_MAX_BLOCKS];
   FLUSH_VOLUME_INFO *flush_volumes_info[DWB_MAX_BLOCKS];
   DWB_SLOT *slots[DWB_MAX_BLOCKS];
   unsigned int block_buffer_size, i, j;
@@ -1501,6 +1505,7 @@ dwb_create_blocks (THREAD_ENTRY * thread_p, unsigned int num_blocks, unsigned in
   for (i = 0; i < DWB_MAX_BLOCKS; i++)
     {
       blocks_write_buffer[i] = NULL;
+      blocks_write_buffer_a[i] = NULL;
       slots[i] = NULL;
       flush_volumes_info[i] = NULL;
     }
@@ -1517,14 +1522,15 @@ dwb_create_blocks (THREAD_ENTRY * thread_p, unsigned int num_blocks, unsigned in
   block_buffer_size = num_block_pages * IO_PAGESIZE;
   for (i = 0; i < num_blocks; i++)
     {
-      blocks_write_buffer[i] = (char *) aligned_alloc (512, block_buffer_size * sizeof (char));
-      if (blocks_write_buffer[i] == NULL)
+      blocks_write_buffer_a[i] = (char *) malloc (block_buffer_size * sizeof (char) + 512);
+      if (blocks_write_buffer_a[i] == NULL)
 	{
 	  er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_OUT_OF_VIRTUAL_MEMORY, 1, block_buffer_size * sizeof (char));
 	  error_code = ER_OUT_OF_VIRTUAL_MEMORY;
 	  goto exit_on_error;
 	}
-      memset (blocks_write_buffer[i], 0, block_buffer_size * sizeof (char));
+      memset (blocks_write_buffer_a[i], 0, block_buffer_size * sizeof (char));
+      blocks_write_buffer[i] = PTR_ALIGN (blocks_write_buffer_a[i], 512);
     }
 
   for (i = 0; i < num_blocks; i++)
@@ -1563,7 +1569,7 @@ dwb_create_blocks (THREAD_ENTRY * thread_p, unsigned int num_blocks, unsigned in
 	  dwb_initialize_slot (&slots[i][j], io_page, j, i);
 	}
 
-      dwb_initialize_block (&blocks[i], i, 0, blocks_write_buffer[i], slots[i], flush_volumes_info[i], 0,
+      dwb_initialize_block (&blocks[i], i, 0, blocks_write_buffer_a[i], blocks_write_buffer[i], slots[i], flush_volumes_info[i], 0,
 			    num_block_pages);
     }
 
@@ -1579,9 +1585,9 @@ exit_on_error:
 	  free_and_init (slots[i]);
 	}
 
-      if (blocks_write_buffer[i] != NULL)
+      if (blocks_write_buffer_a[i] != NULL)
 	{
-	  free_and_init (blocks_write_buffer[i]);
+	  free_and_init (blocks_write_buffer_a[i]);
 	}
 
       if (flush_volumes_info[i] != NULL)
@@ -1612,9 +1618,9 @@ dwb_finalize_block (DWB_BLOCK * block)
       free_and_init (block->slots);
     }
   /* destroy block write buffer */
-  if (block->write_buffer != NULL)
+  if (block->write_buffer_a != NULL)
     {
-      free_and_init (block->write_buffer);
+      free_and_init (block->write_buffer_a);
     }
   if (block->flush_volumes_info != NULL)
     {
