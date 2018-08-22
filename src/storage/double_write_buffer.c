@@ -1517,7 +1517,7 @@ dwb_create_blocks (THREAD_ENTRY * thread_p, unsigned int num_blocks, unsigned in
   block_buffer_size = num_block_pages * IO_PAGESIZE;
   for (i = 0; i < num_blocks; i++)
     {
-      blocks_write_buffer[i] = (char *) malloc (block_buffer_size * sizeof (char));
+      blocks_write_buffer[i] = (char *) aligned_alloc (512, block_buffer_size * sizeof (char));
       if (blocks_write_buffer[i] == NULL)
 	{
 	  er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_OUT_OF_VIRTUAL_MEMORY, 1, block_buffer_size * sizeof (char));
@@ -3792,7 +3792,7 @@ static int
 dwb_check_data_page_is_sane (THREAD_ENTRY * thread_p, DWB_BLOCK * rcv_block, DWB_SLOT * p_dwb_ordered_slots,
 			     int *p_num_recoverable_pages)
 {
-  char page_buf[IO_MAX_PAGE_SIZE + MAX_ALIGNMENT];
+  char page_buf[IO_MAX_PAGE_SIZE + 512];
   FILEIO_PAGE *iopage;
   VPID *vpid;
   int vol_fd, temp_vol_fd, vol_pages = 0;
@@ -3803,7 +3803,7 @@ dwb_check_data_page_is_sane (THREAD_ENTRY * thread_p, DWB_BLOCK * rcv_block, DWB
   bool is_page_corrupted;
 
   assert (rcv_block != NULL && p_dwb_ordered_slots != NULL && p_num_recoverable_pages != NULL);
-  iopage = (FILEIO_PAGE *) PTR_ALIGN (page_buf, MAX_ALIGNMENT);
+  iopage = (FILEIO_PAGE *) PTR_ALIGN (page_buf, 512);
   memset (iopage, 0, IO_PAGESIZE);
 
   volid = NULL_VOLID;
