@@ -4122,6 +4122,11 @@ fileio_write (THREAD_ENTRY * thread_p, int vol_fd, void *io_page_p, PAGEID page_
       nbytes_written = fileio_os_write (thread_p, vol_fd, io_page_p, page_size, offset);
       if (nbytes_written != (ssize_t) page_size)
 	{
+          if (errno == EINVAL)
+            {
+              abort ();
+            }
+
 	  if (errno == EINTR)
 	    {
 	      is_retry = true;
