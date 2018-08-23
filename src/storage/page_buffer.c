@@ -127,15 +127,19 @@ static int rv;
 #define PGBUF_FIND_IOPAGE_PTR(i) \
   ((PGBUF_IOPAGE_BUFFER *) ((char *) &(pgbuf_Pool.iopage_table[0]) + (PGBUF_IOPAGE_BUFFER_SIZE * (i))))
 
+#define PGBUF_GET_IOPAGE_INDEX(iopage) \
+  ((int) (((char *) (iopage) - ((char *) &(pgbuf_Pool.iopage_table[0]))) / PGBUF_IOPAGE_BUFFER_SIZE))
+
 #define PGBUF_FIND_BUFFER_GUARD(bufptr) \
   (&bufptr->iopage_buffer->iopage.page[DB_PAGESIZE])
 
 /* macros for casting pointers */
 #define CAST_PGPTR_TO_BFPTR(bufptr, pgptr) \
   do { \
-    (bufptr) = ((PGBUF_BCB *) ((PGBUF_IOPAGE_BUFFER *) \
-      ((char *) pgptr - offsetof (PGBUF_IOPAGE_BUFFER, iopage.page)))->bcb); \
-    assert ((bufptr) == (bufptr)->iopage_buffer->bcb); \
+    FILEIO_PAGE *iopage; \
+    iopage = (FILEIO_PAGE *) ((char *) pgptr - offsetof (FILEIO_PAGE, page)); \
+    int page_index = PGBUF_GET_IOPAGE_INDEX ((PGBUF_IOPAGE_BUFFER *) iopage); \
+    (bufptr) = PGBUF_FIND_BCB_PTR (page_index); \
   } while (0)
 
 #define CAST_PGPTR_TO_IOPGPTR(io_pgptr, pgptr) \
@@ -145,7 +149,6 @@ static int rv;
 
 #define CAST_BFPTR_TO_PGPTR(pgptr, bufptr) \
   do { \
-    assert ((bufptr) == (bufptr)->iopage_buffer->bcb); \
     (pgptr) = ((PAGE_PTR) ((char *) (bufptr->iopage_buffer) + offsetof (PGBUF_IOPAGE_BUFFER, iopage.page))); \
   } while (0)
 
@@ -539,8 +542,6 @@ struct pgbuf_bcb
 /* iopage buffer structure */
 struct pgbuf_iopage_buffer
 {
-  PGBUF_BCB *bcb;		/* pointer to BCB structure */
-  char dummy[504];              /* to align buffer to 512 */
   FILEIO_PAGE iopage;		/* The actual buffered io page */
 };
 
@@ -2006,7 +2007,10 @@ try_again:
       perf.holder_wait_time = perf.tv_diff.tv_sec * 1000000LL + perf.tv_diff.tv_usec;
     }
 
+/* we can longer support this assertion */
+#if 0
   assert (bufptr == bufptr->iopage_buffer->bcb);
+#endif
 
   /* In case of NO_ERROR, bufptr->mutex has been released. */
 
@@ -4917,7 +4921,7 @@ pgbuf_initialize_bcb_table (void)
 	}
       return ER_PRM_BAD_VALUE;
     }
-  pgbuf_Pool.iopage_table_a = (PGBUF_IOPAGE_BUFFER *) malloc ((size_t) alloc_size + 512);
+  pgbuf_Pool.iopage_table_a = (PGBUF_IOPAGE_BUFFER *) malloc ((size_t) alloc_size + BUFFER_ALIGNEMENT);
   if (pgbuf_Pool.iopage_table_a == NULL)
     {
       er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_OUT_OF_VIRTUAL_MEMORY, 1, (size_t) alloc_size);
@@ -4928,7 +4932,7 @@ pgbuf_initialize_bcb_table (void)
       return ER_OUT_OF_VIRTUAL_MEMORY;
     }
 
-   pgbuf_Pool.iopage_table = (PGBUF_IOPAGE_BUFFER *) PTR_ALIGN ( pgbuf_Pool.iopage_table_a, 512);
+   pgbuf_Pool.iopage_table = (PGBUF_IOPAGE_BUFFER *) PTR_ALIGN ( pgbuf_Pool.iopage_table_a, BUFFER_ALIGNEMENT);
 
   /* initialize each entry of the buffer BCB table */
   for (i = 0; i < pgbuf_Pool.num_buffers; i++)
@@ -4968,7 +4972,11 @@ pgbuf_initialize_bcb_table (void)
 
       /* link BCB and iopage buffer */
       ioptr = PGBUF_FIND_IOPAGE_PTR (i);
-      ASSERT_ALIGN ((char* )ioptr, 512);
+      ASSERT_ALIGN ((char* )ioptr, BUFFER_ALIGNEMENT);
+
+      int ioptr_index = PGBUF_GET_IOPAGE_INDEX (ioptr);
+      assert (ioptr_index == i);
+      assert (bufptr - &(pgbuf_Pool.BCB_table[0]) == i);
 
       LSA_SET_NULL (&ioptr->iopage.prv.lsa);
 
@@ -4984,7 +4992,6 @@ pgbuf_initialize_bcb_table (void)
 #endif
 
       bufptr->iopage_buffer = ioptr;
-      ioptr->bcb = bufptr;
 
 #if defined(CUBRID_DEBUG)
       /* Reinitizalize the buffer */
@@ -9834,7 +9841,7 @@ pgbuf_remove_private_from_aout_list (const int lru_idx)
 STATIC_INLINE int
 pgbuf_bcb_flush_with_wal (THREAD_ENTRY * thread_p, PGBUF_BCB * bufptr, bool is_page_flush_thread, bool * is_bcb_locked)
 {
-  char page_buf[IO_MAX_PAGE_SIZE + 512];
+  char page_buf[IO_MAX_PAGE_SIZE + BUFFER_ALIGNEMENT];
   FILEIO_PAGE *iopage;
   LOG_LSA oldest_unflush_lsa;
   int error = NO_ERROR;
@@ -9914,7 +9921,7 @@ start_copy_page:
 	}
     }
 
-  iopage = (FILEIO_PAGE *) PTR_ALIGN (page_buf, 512);
+  iopage = (FILEIO_PAGE *) PTR_ALIGN (page_buf, BUFFER_ALIGNEMENT);
   memcpy ((void *) iopage, (void *) (&bufptr->iopage_buffer->iopage), IO_PAGESIZE);
 
 copy_unflushed_lsa:

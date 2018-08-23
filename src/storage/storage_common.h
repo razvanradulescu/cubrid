@@ -41,6 +41,7 @@
 #include "sha1.h"
 
   /* LIMITS AND NULL VALUES ON DISK RELATED DATATYPES */
+#define BUFFER_ALIGNEMENT 16384
 
 #define NULL_VOLID  (-1)	/* Value of an invalid volume identifier */
 #define NULL_SECTID (-1)	/* Value of an invalid sector identifier */
