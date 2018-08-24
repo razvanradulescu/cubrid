@@ -3028,6 +3028,40 @@ start:
       last_size = stat_buf.st_size;
     }
 
+  if (vol_id >= LOG_DBFIRST_VOLID && prm_get_integer_value (PRM_ID_DATA_FILE_ADVISE) != 0)
+    {
+      int advise_flag = 0;
+      off_t amount = 100 * 1024 * 1024 * 1024;  /* 100 G */
+
+      switch (prm_get_integer_value (PRM_ID_DATA_FILE_ADVISE))
+        {
+          case 1:
+            advise_flag = POSIX_FADV_NORMAL;
+            break;
+          case 2:
+            advise_flag = POSIX_FADV_SEQUENTIAL;
+            break;
+          case 3:
+            advise_flag = POSIX_FADV_RANDOM;
+            break;
+          case 4:
+            advise_flag = POSIX_FADV_NOREUSE;
+            break;
+          case 5:
+            advise_flag = POSIX_FADV_WILLNEED;
+            break;
+          case 6:
+            advise_flag = POSIX_FADV_DONTNEED;
+            break;
+        }
+
+      if (posix_fadvice (vol_fd, 0, amount, advise_flag) != 0)
+        {
+          er_set_with_oserror (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_IO_MOUNT_FAIL, 1, vol_label_p);
+          return NULL_VOLDES;
+        }
+    }
+
   /* LOCK THE DISK */
   if (lock_wait != 0)
     {
