@@ -3055,7 +3055,7 @@ start:
             break;
         }
 
-      if (posix_fadvice (vol_fd, 0, amount, advise_flag) != 0)
+      if (posix_fadvise (vol_fd, 0, amount, advise_flag) != 0)
         {
           er_set_with_oserror (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_IO_MOUNT_FAIL, 1, vol_label_p);
           return NULL_VOLDES;
