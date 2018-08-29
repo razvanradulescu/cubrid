@@ -3394,6 +3394,7 @@ heap_stats_find_best_page (THREAD_ENTRY * thread_p, const HFID * hfid, int neede
   float other_high_best_ratio;
   PGBUF_WATCHER hdr_page_watcher;
   int error_code = NO_ERROR;
+  PERF_UTIME_TRACKER time_find_best_page = PERF_UTIME_TRACKER_INITIALIZER;
 
   /* 
    * Try to use the space cache for as much information as possible to avoid
@@ -3418,12 +3419,13 @@ heap_stats_find_best_page (THREAD_ENTRY * thread_p, const HFID * hfid, int neede
   addr_hdr.vfid = &hfid->vfid;
   addr_hdr.offset = HEAP_HEADER_AND_CHAIN_SLOTID;
 
+  PERF_UTIME_TRACKER_START (thread_p, &time_find_best_page);
   error_code = pgbuf_ordered_fix (thread_p, &vpid, OLD_PAGE, PGBUF_LATCH_WRITE, &hdr_page_watcher);
   if (error_code != NO_ERROR)
     {
       /* something went wrong. Unable to fetch header page */
       ASSERT_ERROR ();
-      return NULL;
+      goto error;
     }
   assert (hdr_page_watcher.pgptr != NULL);
 
@@ -3433,7 +3435,7 @@ heap_stats_find_best_page (THREAD_ENTRY * thread_p, const HFID * hfid, int neede
     {
       assert (false);
       pgbuf_ordered_unfix (thread_p, &hdr_page_watcher);
-      return NULL;
+      goto error;
     }
 
   heap_hdr = (HEAP_HDR_STATS *) hdr_recdes.data;
@@ -3467,7 +3469,7 @@ heap_stats_find_best_page (THREAD_ENTRY * thread_p, const HFID * hfid, int neede
 	  ASSERT_ERROR ();
 	  assert (pg_watcher->pgptr == NULL);
 	  pgbuf_ordered_unfix (thread_p, &hdr_page_watcher);
-	  return NULL;
+	  goto error;
 	}
       if (pg_watcher->pgptr != NULL)
 	{
@@ -3524,7 +3526,7 @@ heap_stats_find_best_page (THREAD_ENTRY * thread_p, const HFID * hfid, int neede
 	    {
 	      pgbuf_ordered_unfix (thread_p, &hdr_page_watcher);
 	      ASSERT_ERROR ();
-	      return NULL;
+	      goto error;
 	    }
 	}
       while (num_pages_found == 0 && try_sync <= 2);
@@ -3547,7 +3549,7 @@ heap_stats_find_best_page (THREAD_ENTRY * thread_p, const HFID * hfid, int neede
 	{
 	  ASSERT_ERROR ();
 	  pgbuf_ordered_unfix (thread_p, &hdr_page_watcher);
-	  return NULL;
+	  goto error;
 	}
       assert (pg_watcher->pgptr != NULL || er_errid () == ER_INTERRUPTED
 	      || er_errid () == ER_FILE_NOT_ENOUGH_PAGES_IN_DATABASE);
@@ -3557,7 +3559,13 @@ heap_stats_find_best_page (THREAD_ENTRY * thread_p, const HFID * hfid, int neede
   log_skip_logging (thread_p, &addr_hdr);
   pgbuf_ordered_set_dirty_and_free (thread_p, &hdr_page_watcher);
 
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_find_best_page, PSTAT_HF_HEAP_FIND_BEST_PAGE);
+
   return pg_watcher->pgptr;
+
+error:
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_find_best_page, PSTAT_HF_HEAP_FIND_BEST_PAGE);
+  return NULL;
 }
 
 /*
@@ -3611,6 +3619,7 @@ heap_stats_sync_bestspace (THREAD_ENTRY * thread_p, const HFID * hfid, HEAP_HDR_
   tsc_getticks (&start_tick);
 #endif /* CUBRID_DEBUG */
 
+  /* TODO : transform to counter/timer */
   perfmon_inc_stat (thread_p, PSTAT_HEAP_NUM_STATS_SYNC_BESTSPACE);
   PGBUF_INIT_WATCHER (&pg_watcher, PGBUF_ORDERED_HEAP_NORMAL, hfid);
   PGBUF_INIT_WATCHER (&old_pg_watcher, PGBUF_ORDERED_HEAP_NORMAL, hfid);
