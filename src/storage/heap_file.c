@@ -83,7 +83,7 @@ static int rv;
 
 #define HEAP_CLASSREPR_MAXCACHE	1024
 
-#define HEAP_STATS_ENTRY_MHT_EST_SIZE 1000
+#define HEAP_STATS_ENTRY_MHT_EST_SIZE (prm_get_integer_value (PRM_ID_HEAP_BEST_SPACE_HT_SIZE))
 #define HEAP_STATS_ENTRY_FREELIST_SIZE 1000
 
 /* A good space to accept insertions */

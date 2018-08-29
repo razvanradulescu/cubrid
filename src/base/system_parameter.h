@@ -423,6 +423,7 @@ enum param_id
   PRM_ID_DWB_LOGGING,
   PRM_ID_DATA_FILE_DIRECT_ACCESS,
   PRM_ID_DATA_FILE_ADVISE,
+  PRM_ID_HEAP_BEST_SPACE_HT_SIZE,
 
   /* change PRM_LAST_ID when adding new system parameters */
   PRM_LAST_ID = PRM_ID_DATA_FILE_ADVISE
