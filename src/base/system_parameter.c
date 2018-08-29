@@ -2071,8 +2071,8 @@ bool PRM_FORCE_RESTART_TO_SKIP_RECOVERY = false;
 static bool prm_force_restart_to_skip_recovery_default = false;
 static unsigned int prm_force_restart_to_skip_recovery_flag = 0;
 
-int PRM_EXTENDED_STATISTICS = 15;
-static int prm_extended_statistics_default = 15;
+int PRM_EXTENDED_STATISTICS = PERFMON_ACTIVATION_FLAG_DEFAULT_VALUE;
+static int prm_extended_statistics_default = PERFMON_ACTIVATION_FLAG_DEFAULT_VALUE;
 static int prm_extended_statistics_lower = 0;
 static int prm_extended_statistics_upper = PERFMON_ACTIVATION_FLAG_MAX_VALUE;
 static unsigned int prm_extended_statistics_flag = 0;

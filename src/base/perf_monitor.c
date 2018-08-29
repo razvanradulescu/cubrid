@@ -110,6 +110,7 @@ static int rv;
 
 #define PERFMON_VALUES_MEMSIZE (pstat_Global.n_stat_values * sizeof (UINT64))
 
+static int f_load_Num_data_page_type_histogram (void);
 static int f_load_Num_data_page_fix_ext (void);
 static int f_load_Num_data_page_promote_ext (void);
 static int f_load_Num_data_page_promote_time_ext (void);
@@ -128,6 +129,7 @@ static int f_load_Count_get_oldest_mvcc_retry (void);
 static int f_load_thread_stats (void);
 static int f_load_thread_daemon_stats (void);
 
+static void f_dump_in_file_Num_data_page_type_histogram (FILE * f, const UINT64 * stat_vals);
 static void f_dump_in_file_Num_data_page_fix_ext (FILE *, const UINT64 * stat_vals);
 static void f_dump_in_file_Num_data_page_promote_ext (FILE *, const UINT64 * stat_vals);
 static void f_dump_in_file_Num_data_page_promote_time_ext (FILE *, const UINT64 * stat_vals);
@@ -141,6 +143,7 @@ static void f_dump_in_file_thread_stats (FILE * f, const UINT64 * stat_vals);
 static void f_dump_in_file_thread_daemon_stats (FILE * f, const UINT64 * stat_vals);
 static void f_dump_in_file_Num_dwb_flushed_block_volumes (FILE *, const UINT64 * stat_vals);
 
+static void f_dump_in_buffer_Num_data_page_type_histogram (char **s, const UINT64 * stat_vals, int *remaining_size);
 static void f_dump_in_buffer_Num_data_page_fix_ext (char **, const UINT64 * stat_vals, int *remaining_size);
 static void f_dump_in_buffer_Num_data_page_promote_ext (char **, const UINT64 * stat_vals, int *remaining_size);
 static void f_dump_in_buffer_Num_data_page_promote_time_ext (char **, const UINT64 * stat_vals, int *remaining_size);
@@ -154,6 +157,7 @@ static void f_dump_in_buffer_thread_stats (char **s, const UINT64 * stat_vals, i
 static void f_dump_in_buffer_thread_daemon_stats (char **s, const UINT64 * stat_vals, int *remaining_size);
 static void f_dump_in_buffer_Num_dwb_flushed_block_volumes (char **s, const UINT64 * stat_vals, int *remaining_size);
 
+static void perfmon_stat_dump_in_file_page_type_histogram_array_stat (FILE * stream, const UINT64 * stats_ptr);
 static void perfmon_stat_dump_in_file_fix_page_array_stat (FILE *, const UINT64 * stats_ptr);
 static void perfmon_stat_dump_in_file_promote_page_array_stat (FILE *, const UINT64 * stats_ptr);
 static void perfmon_stat_dump_in_file_unfix_page_array_stat (FILE *, const UINT64 * stats_ptr);
@@ -164,6 +168,8 @@ static void perfmon_stat_dump_in_file_snapshot_array_stat (FILE *, const UINT64 
 static void perfmon_stat_dump_in_file_thread_stats (FILE * stream, const UINT64 * stats_ptr);
 static void perfmon_stat_dump_in_file_thread_daemon_stats (FILE * stream, const UINT64 * stats_ptr);
 
+static void perfmon_stat_dump_in_buffer_fix_page_type_histogram_stat (const UINT64 * stats_ptr, char **s,
+                                                                      int *remaining_size);
 static void perfmon_stat_dump_in_buffer_fix_page_array_stat (const UINT64 * stats_ptr, char **s, int *remaining_size);
 static void perfmon_stat_dump_in_buffer_promote_page_array_stat (const UINT64 * stats_ptr, char **s,
 								 int *remaining_size);
@@ -301,6 +307,10 @@ PSTAT_METADATA pstat_Metadata[] = {
   /* best space info */
   PSTAT_METADATA_INIT_SINGLE_PEEK (PSTAT_HF_NUM_STATS_ENTRIES, "Num_heap_stats_bestspace_entries"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_HF_NUM_STATS_MAXED, "Num_heap_stats_bestspace_maxed"),
+  PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_HF_BEST_SPACE_ADD, "bestspace_maxed_add"),
+  PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_HF_BEST_SPACE_DEL, "bestspace_maxed_del"),
+  PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_HF_BEST_SPACE_FIND, "bestspace_maxed_find"),
+  PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_HF_HEAP_FIND_PAGE_BEST_SPACE, "heap_find_page_bestspace"),
 
   /* HA replication delay */
   PSTAT_METADATA_INIT_SINGLE_PEEK (PSTAT_HA_REPL_DELAY, "Time_ha_replication_delay"),
@@ -542,6 +552,10 @@ PSTAT_METADATA pstat_Metadata[] = {
   PSTAT_METADATA_INIT_SINGLE_PEEK (PSTAT_PB_AVOID_VICTIM_CNT, "Num_data_page_avoid_victim"),
 
   /* Array type statistics */
+  /* Array type statistics */
+  PSTAT_METADATA_INIT_COMPLEX (PSTAT_PBX_PAGE_TYPE_HISTOGRAM, "Num_data_page_histogram",
+                               &f_dump_in_file_Num_data_page_type_histogram,
+			       &f_dump_in_buffer_Num_data_page_type_histogram, &f_load_Num_data_page_fix_ext),
   PSTAT_METADATA_INIT_COMPLEX (PSTAT_PBX_FIX_COUNTERS, "Num_data_page_fix_ext", &f_dump_in_file_Num_data_page_fix_ext,
 			       &f_dump_in_buffer_Num_data_page_fix_ext, &f_load_Num_data_page_fix_ext),
   PSTAT_METADATA_INIT_COMPLEX (PSTAT_PBX_PROMOTE_COUNTERS, "Num_data_page_promote_ext",
@@ -1770,7 +1784,8 @@ perfmon_server_calc_stats (UINT64 * stats)
 		    &(stats[pstat_Metadata[PSTAT_PB_FLUSHED_BCBS_WAIT_FOR_ASSIGN].start_offset]),
 		    &(stats[pstat_Metadata[PSTAT_PB_LFCQ_BIG_PRV_NUM].start_offset]),
 		    &(stats[pstat_Metadata[PSTAT_PB_LFCQ_PRV_NUM].start_offset]),
-		    &(stats[pstat_Metadata[PSTAT_PB_LFCQ_SHR_NUM].start_offset]));
+		    &(stats[pstat_Metadata[PSTAT_PB_LFCQ_SHR_NUM].start_offset]),
+                    &(stats[pstat_Metadata[PSTAT_PBX_PAGE_TYPE_HISTOGRAM].start_offset]));
 
   css_get_thread_stats (&stats[pstat_Metadata[PSTAT_THREAD_STATS].start_offset]);
   perfmon_peek_thread_daemon_stats (stats);
@@ -1881,6 +1896,8 @@ perfmon_stat_page_type_name (const int page_type)
       return "PAGE_BTREE_L";
     case PERF_PAGE_BTREE_NONLEAF:
       return "PAGE_BTREE_N";
+    case PERF_PAGE_HEAP_HEADER:
+      return "PAGE_HEAP_HDR";
     default:
       break;
     }
@@ -2056,6 +2073,73 @@ perfmon_stat_promote_cond_name (const int cond_type)
       break;
     }
   return "ERROR";
+}
+
+/*
+ * perfmon_stat_dump_in_buffer_fix_page_type_histogram_stat () -
+ *
+ * stats_ptr(in): start of array values
+ * s(in/out): output string (NULL if not used)
+ * remaining_size(in/out): remaining size in string s (NULL if not used)
+ * 
+ */
+static void
+perfmon_stat_dump_in_buffer_fix_page_type_histogram_stat (const UINT64 * stats_ptr, char **s, int *remaining_size)
+{
+  int page_type;
+  int offset;
+  UINT64 counter = 0;
+  int ret;
+
+  assert (remaining_size != NULL);
+  assert (s != NULL);
+  if (*s != NULL)
+    {
+      for (page_type = PERF_PAGE_UNKNOWN; page_type < PERF_PAGE_CNT; page_type++)
+	{
+          offset = page_type;
+
+          assert (offset < PERF_PAGE_CNT);
+
+          counter = stats_ptr[offset];
+	  
+          ret = snprintf (*s, *remaining_size, "%-14s = %10llu\n", perfmon_stat_page_type_name (page_type),
+                          (long long unsigned int) counter);
+			  
+          *remaining_size -= ret;
+	  *s += ret;
+	  
+          if (*remaining_size <= 0)
+	    {
+              return;
+            }
+	}
+    }
+}
+
+/*
+ * perfmon_stat_dump_in_file_page_type_histogram_array_stat () -
+ *
+ * stream(in): output file
+ * stats_ptr(in): start of array values
+ *
+ */
+static void
+perfmon_stat_dump_in_file_page_type_histogram_array_stat (FILE * stream, const UINT64 * stats_ptr)
+{
+  int page_type;
+  int offset;
+  UINT64 counter = 0;
+
+  assert (stream != NULL);
+  for (page_type = PERF_PAGE_UNKNOWN; page_type < PERF_PAGE_CNT; page_type++)
+    {
+      offset = page_type;
+
+      assert (offset < PERF_PAGE_CNT);
+      counter = stats_ptr[offset];
+      fprintf (stream, "%-14s = %10llu\n", perfmon_stat_page_type_name (page_type), (long long unsigned int) counter);
+    }
 }
 
 /*
@@ -3203,6 +3287,16 @@ perfmon_add_stat_at_offset (THREAD_ENTRY * thread_p, PERF_STAT_ID psid, const in
 }
 
 /*
+ * f_load_Num_data_page_type_histogram () - Get the number of values for Num_data_page_type_histogram statistic
+ * 
+ */
+static int
+f_load_Num_data_page_type_histogram (void)
+{
+  return PERF_PAGE_CNT;
+}
+
+/*
  * f_load_Num_data_page_fix_ext () - Get the number of values for Num_data_page_fix_ext statistic
  * 
  */
@@ -3354,6 +3448,18 @@ f_load_Count_get_oldest_mvcc_retry (void)
 }
 
 /*
+ * f_dump_in_file_Num_data_page_type_histogram () - Write in file the values for Num_data_page_type_histogram statistic
+ * f (out): File handle
+ * stat_vals (in): statistics buffer
+ * 
+ */
+static void
+f_dump_in_file_Num_data_page_type_histogram (FILE * f, const UINT64 * stat_vals)
+{
+  perfmon_stat_dump_in_file_page_type_histogram_array_stat (f, stat_vals);
+}
+
+/*
  * f_dump_in_file_Num_data_page_fix_ext () - Write in file the values for Num_data_page_fix_ext statistic
  * f (out): File handle
  * stat_vals (in): statistics buffer
@@ -3488,6 +3594,20 @@ f_dump_in_file_Num_dwb_flushed_block_volumes (FILE * f, const UINT64 * stat_vals
     {
       perfmon_stat_dump_in_file_flushed_block_volumes_array_stat (f, stat_vals);
     }
+}
+
+/*
+ * f_dump_in_buffer_Num_data_page_type_histogram () - Write to a buffer the values for Num_data_page_type_histogram
+ *                                                    statistic
+ * s (out): Buffer to write to
+ * stat_vals (in): statistics buffer
+ * remaining_size (in): size of input buffer
+ * 
+ */
+static void
+f_dump_in_buffer_Num_data_page_type_histogram (char **s, const UINT64 * stat_vals, int *remaining_size)
+{
+  perfmon_stat_dump_in_buffer_fix_page_type_histogram_stat (stat_vals, s, remaining_size);
 }
 
 /*

@@ -717,7 +717,9 @@ static SCAN_CODE heap_attrinfo_transform_to_disk_internal (THREAD_ENTRY * thread
 							   int lob_create_flag);
 static int heap_stats_del_bestspace_by_vpid (THREAD_ENTRY * thread_p, VPID * vpid);
 static int heap_stats_del_bestspace_by_hfid (THREAD_ENTRY * thread_p, const HFID * hfid);
+#if defined (ENABLE_UNUSED_FUNCTION)
 static HEAP_BESTSPACE heap_stats_get_bestspace_by_vpid (THREAD_ENTRY * thread_p, VPID * vpid);
+#endif /* ENABLE_UNUSED_FUNCTION */
 static HEAP_STATS_ENTRY *heap_stats_add_bestspace (THREAD_ENTRY * thread_p, const HFID * hfid, VPID * vpid,
 						   int freespace);
 static int heap_stats_entry_free (THREAD_ENTRY * thread_p, void *data, void *args);
@@ -959,8 +961,11 @@ heap_stats_add_bestspace (THREAD_ENTRY * thread_p, const HFID * hfid, VPID * vpi
 {
   HEAP_STATS_ENTRY *ent;
   int rc;
+  PERF_UTIME_TRACKER time_best_space = PERF_UTIME_TRACKER_INITIALIZER;
 
   assert (prm_get_integer_value (PRM_ID_HF_MAX_BESTSPACE_ENTRIES) > 0);
+
+  PERF_UTIME_TRACKER_START (thread_p, &time_best_space);
 
   rc = pthread_mutex_lock (&heap_Bestspace->bestspace_mutex);
 
@@ -1040,6 +1045,7 @@ end:
   assert (mht_count (heap_Bestspace->vpid_ht) == mht_count (heap_Bestspace->hfid_ht));
 
   pthread_mutex_unlock (&heap_Bestspace->bestspace_mutex);
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_best_space, PSTAT_HF_BEST_SPACE_ADD);
 
   return ent;
 }
@@ -1090,7 +1096,9 @@ heap_stats_del_bestspace_by_vpid (THREAD_ENTRY * thread_p, VPID * vpid)
 {
   HEAP_STATS_ENTRY *ent;
   int rc;
+  PERF_UTIME_TRACKER time_best_space = PERF_UTIME_TRACKER_INITIALIZER;
 
+  PERF_UTIME_TRACKER_START (thread_p, &time_best_space);
   rc = pthread_mutex_lock (&heap_Bestspace->bestspace_mutex);
 
   ent = (HEAP_STATS_ENTRY *) mht_get (heap_Bestspace->vpid_ht, vpid);
@@ -1110,10 +1118,12 @@ end:
   assert (mht_count (heap_Bestspace->vpid_ht) == mht_count (heap_Bestspace->hfid_ht));
 
   pthread_mutex_unlock (&heap_Bestspace->bestspace_mutex);
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_best_space, PSTAT_HF_BEST_SPACE_DEL);
 
   return NO_ERROR;
 }
 
+#if defined (ENABLE_UNUSED_FUNCTION)
 /*
  * heap_stats_get_bestspace_by_vpid () -
  *   return: NO_ERROR
@@ -1147,6 +1157,7 @@ end:
 
   return best;
 }
+#endif /* ENABLE_UNUSED_FUNCTION */
 
 /*
  * Scan page buffer and latch page manipulation
@@ -3137,8 +3148,12 @@ heap_stats_find_page_in_bestspace (THREAD_ENTRY * thread_p, const HFID * hfid, H
   int i, best_array_index = -1;
   bool hash_is_available;
   bool best_hint_is_used;
+  PERF_UTIME_TRACKER time_best_space = PERF_UTIME_TRACKER_INITIALIZER;
+  PERF_UTIME_TRACKER time_find_page_best_space = PERF_UTIME_TRACKER_INITIALIZER;
 
   assert (PGBUF_IS_CLEAN_WATCHER (pg_watcher));
+
+  PERF_UTIME_TRACKER_START (thread_p, &time_find_page_best_space);
 
   /* 
    * If a page is busy, don't wait continue looking for other pages in our
@@ -3161,6 +3176,8 @@ heap_stats_find_page_in_bestspace (THREAD_ENTRY * thread_p, const HFID * hfid, H
 
       if (hash_is_available)
 	{
+          PERF_UTIME_TRACKER_START (thread_p, &time_best_space);
+
 	  rc = pthread_mutex_lock (&heap_Bestspace->bestspace_mutex);
 
 	  while (notfound_cnt < BEST_PAGE_SEARCH_MAX_COUNT
@@ -3185,6 +3202,7 @@ heap_stats_find_page_in_bestspace (THREAD_ENTRY * thread_p, const HFID * hfid, H
 	    }
 
 	  pthread_mutex_unlock (&heap_Bestspace->bestspace_mutex);
+          PERF_UTIME_TRACKER_TIME (thread_p, &time_best_space, PSTAT_HF_BEST_SPACE_FIND);
 	}
 
       if (best.freespace == -1)
@@ -3340,6 +3358,8 @@ heap_stats_find_page_in_bestspace (THREAD_ENTRY * thread_p, const HFID * hfid, H
    * Reset back the timeout value of the transaction
    */
   (void) xlogtb_reset_wait_msecs (thread_p, old_wait_msecs);
+
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_best_space, PSTAT_HF_BEST_SPACE_FIND);
 
   return found;
 }

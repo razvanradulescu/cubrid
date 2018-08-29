@@ -13833,12 +13833,16 @@ pgbuf_peek_stats (UINT64 * fixed_cnt, UINT64 * dirty_cnt, UINT64 * lru1_cnt, UIN
 		  UINT64 * victim_candidates, UINT64 * avoid_dealloc_cnt, UINT64 * avoid_victim_cnt,
 		  UINT64 * private_quota, UINT64 * private_cnt, UINT64 * alloc_bcb_waiter_high,
 		  UINT64 * alloc_bcb_waiter_med, UINT64 * flushed_bcbs_waiting_direct_assign,
-		  UINT64 * lfcq_big_prv_num, UINT64 * lfcq_prv_num, UINT64 * lfcq_shr_num)
+		  UINT64 * lfcq_big_prv_num, UINT64 * lfcq_prv_num, UINT64 * lfcq_shr_num,
+                  UINT64 * page_type_histogram)
 {
   PGBUF_BCB *bufptr;
   int i;
   int bcb_flags;
   PGBUF_ZONE zone;
+  PAGE_PTR pageptr;
+  int perf_page_type;
+  THREAD_ENTRY * thread_p;
 
   *fixed_cnt = 0;
   *dirty_cnt = 0;
@@ -13849,6 +13853,10 @@ pgbuf_peek_stats (UINT64 * fixed_cnt, UINT64 * dirty_cnt, UINT64 * lru1_cnt, UIN
   *avoid_victim_cnt = 0;
   *private_cnt = 0;
   *victim_candidates = 0;
+  
+  memset (page_type_histogram, 0, sizeof (*page_type_histogram) * PERF_PAGE_CNT);
+  
+  thread_p = thread_get_thread_entry_info ();
 
   for (i = 0; i < pgbuf_Pool.num_buffers; i++)
     {
@@ -13896,6 +13904,14 @@ pgbuf_peek_stats (UINT64 * fixed_cnt, UINT64 * dirty_cnt, UINT64 * lru1_cnt, UIN
 	      *private_cnt = *private_cnt + 1;
 	    }
 	}
+
+      CAST_BFPTR_TO_PGPTR (pageptr, bufptr);
+      perf_page_type = pgbuf_get_page_type_for_stat (thread_p, pageptr);
+      assert (perf_page_type >= PERF_PAGE_UNKNOWN && perf_page_type < PERF_PAGE_CNT);
+      if (perf_page_type >= PERF_PAGE_UNKNOWN && perf_page_type < PERF_PAGE_CNT)
+        {
+          page_type_histogram[perf_page_type] = page_type_histogram[perf_page_type] + 1;
+        }
     }
   for (i = 0; i < PGBUF_TOTAL_LRU_COUNT; i++)
     {
@@ -14165,6 +14181,18 @@ pgbuf_get_page_type_for_stat (THREAD_ENTRY * thread_p, PAGE_PTR pgptr)
       && (perfmon_get_activation_flag () & PERFMON_ACTIVATION_FLAG_DETAILED_BTREE_PAGE))
     {
       perf_page_type = btree_get_perf_btree_page_type (thread_p, pgptr);
+    }
+  else if ((io_pgptr->prv.ptype == PAGE_HEAP)
+           && (perfmon_get_activation_flag () & PERFMON_ACTIVATION_FLAG_DETAILED_HEAP_PAGE))
+    {
+      if (heap_is_page_header (thread_p, pgptr))
+        {
+          perf_page_type = PERF_PAGE_HEAP_HEADER;
+        }
+      else
+        {
+          perf_page_type = PERF_PAGE_HEAP;
+        }
     }
   else
     {
