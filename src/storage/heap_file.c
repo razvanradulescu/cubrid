@@ -3359,7 +3359,7 @@ heap_stats_find_page_in_bestspace (THREAD_ENTRY * thread_p, const HFID * hfid, H
    */
   (void) xlogtb_reset_wait_msecs (thread_p, old_wait_msecs);
 
-  PERF_UTIME_TRACKER_TIME (thread_p, &time_best_space, PSTAT_HF_BEST_SPACE_FIND);
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_find_page_best_space, PSTAT_HF_HEAP_FIND_PAGE_BEST_SPACE);
 
   return found;
 }
