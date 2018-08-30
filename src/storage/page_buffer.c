@@ -325,6 +325,11 @@ typedef enum
 #define PGBUF_LRU_LIST_IS_OVER_QUOTA_WITH_BUFFER(list) \
   (PGBUF_LRU_LIST_COUNT (list) > (list)->quota + PGBUF_OVER_QUOTA_BUFFER ((list)->quota))
 
+/* total number of private pages exceeds quota of private */
+#define PGBUF_IS_OVERALL_PRIVATE_OVER_QUOTA() \
+  ((pgbuf_Pool.num_buffers - pgbuf_Pool.monitor.lru_shared_pgs_cnt) > \
+    pgbuf_Pool.num_buffers * pgbuf_Pool.quota.private_pages_ratio)
+
 #define PBGUF_BIG_PRIVATE_MIN_SIZE 100
 
 /* LRU flags */
@@ -8309,36 +8314,38 @@ pgbuf_get_victim (THREAD_ENTRY * thread_p)
    * we'd like to avoid looping infinitely (if there's a bug), so we use the nloops safe-guard. Each shared list should
    * be removed after a failed search, so the maximum accepted number of loops is pgbuf_Pool.num_LRU_list.
    */
-
-  if (detailed_perf)
+  /* skip search in shared if private list is over quota and overall the system private is over quota */
+  if (lru_list == NULL || !(PGBUF_LRU_LIST_IS_OVER_QUOTA (lru_list) && PGBUF_IS_OVERALL_PRIVATE_OVER_QUOTA()))
     {
-      PERF_UTIME_TRACKER_START (thread_p, &perf_tracker);
-    }
+      if (detailed_perf)
+        {
+          PERF_UTIME_TRACKER_START (thread_p, &perf_tracker);
+        }
 
-  initial_consume_cursor = pgbuf_Pool.shared_lrus_with_victims->get_consumer_cursor ();
-  do
-    {
-      /* 3. search a shared list. */
-      victim = pgbuf_lfcq_get_victim_from_shared_lru (thread_p, has_flush_thread);
-      if (victim != NULL)
-	{
-	  if (detailed_perf)
+      initial_consume_cursor = pgbuf_Pool.shared_lrus_with_victims->get_consumer_cursor ();
+      do
+        {
+          /* 3. search a shared list. */
+          victim = pgbuf_lfcq_get_victim_from_shared_lru (thread_p, has_flush_thread);
+          if (victim != NULL)
 	    {
-	      PERF_UTIME_TRACKER_TIME (thread_p, &perf_tracker, PSTAT_PB_VICTIM_SEARCH_SHARED_LISTS);
+	      if (detailed_perf)
+	        {
+	          PERF_UTIME_TRACKER_TIME (thread_p, &perf_tracker, PSTAT_PB_VICTIM_SEARCH_SHARED_LISTS);
+	        }
+	      return victim;
 	    }
-	  return victim;
-	}
-      current_consume_cursor = pgbuf_Pool.shared_lrus_with_victims->get_consumer_cursor ();
+          current_consume_cursor = pgbuf_Pool.shared_lrus_with_victims->get_consumer_cursor ();
+        }
+      while (!has_flush_thread && !pgbuf_Pool.shared_lrus_with_victims->is_empty ()
+	     && ((current_consume_cursor - initial_consume_cursor) <= pgbuf_Pool.num_LRU_list)
+	     && (++nloops <= pgbuf_Pool.num_LRU_list));
+      /* todo: maybe we can find a less complicated condition of looping. Probably no need to use nloops <= pgbuf_Pool.num_LRU_list. */
+      if (detailed_perf)
+        {
+          PERF_UTIME_TRACKER_TIME (thread_p, &perf_tracker, PSTAT_PB_VICTIM_SEARCH_SHARED_LISTS);
+        }
     }
-  while (!has_flush_thread && !pgbuf_Pool.shared_lrus_with_victims->is_empty ()
-	 && ((current_consume_cursor - initial_consume_cursor) <= pgbuf_Pool.num_LRU_list)
-	 && (++nloops <= pgbuf_Pool.num_LRU_list));
-  /* todo: maybe we can find a less complicated condition of looping. Probably no need to use nloops <= pgbuf_Pool.num_LRU_list. */
-  if (detailed_perf)
-    {
-      PERF_UTIME_TRACKER_TIME (thread_p, &perf_tracker, PSTAT_PB_VICTIM_SEARCH_SHARED_LISTS);
-    }
-
   /* no victim found... */
   assert (victim == NULL);
 
