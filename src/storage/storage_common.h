@@ -221,7 +221,8 @@ typedef enum
 {
   PAGE_UNKNOWN = 0,		/* used for initialized page */
   PAGE_FTAB,			/* file allocset table page */
-  PAGE_HEAP,			/* heap page */
+  PAGE_HEAP_,		        /* heap page */
+  PAGE_HEAP_HEADER,             /* heap header page */
   PAGE_VOLHEADER,		/* volume header page */
   PAGE_VOLBITMAP,		/* volume bitmap page */
   PAGE_QRESULT,			/* query result page */
@@ -229,11 +230,19 @@ typedef enum
   PAGE_OVERFLOW,		/* overflow page (with ovf_keyval) */
   PAGE_AREA,			/* area page */
   PAGE_CATALOG,			/* catalog page */
-  PAGE_BTREE,			/* b+tree index page (with ovf_OIDs) */
+  PAGE_BTREE_GENERIC,		/* undeterminded b+tree index page (with ovf_OIDs) */
+  PAGE_BTREE_ROOT,		/* b+tree root index page */
+  PAGE_BTREE_OVF,		/* b+tree overflow index page */
+  PAGE_BTREE_LEAF,		/* b+tree leaf index page */
+  PAGE_BTREE_NONLEAF,	        /* b+tree nonleaf index page */
   PAGE_LOG,			/* NONE - log page (unused) */
-  PAGE_DROPPED_FILES,		/* Dropped files page.  */
+  PAGE_DROPPED_FILES,		/* Dropped files page. */
   PAGE_VACUUM_DATA,		/* Vacuum data. */
-  PAGE_LAST = PAGE_VACUUM_DATA
+  PAGE_LAST = PAGE_VACUUM_DATA,
+
+  /* to be used by page type check code as argument; do set on page storage */
+  PAGE_CHECK_HEAP_GENERIC,
+  PAGE_CHECK_BTREE_GENERIC = PAGE_BTREE_GENERIC
 } PAGE_TYPE;
 
 /* Index scan OID buffer size as set by system parameter. */
