@@ -114,7 +114,7 @@ extern int catcls_remove_entry (THREAD_ENTRY * thread_p, OID * class_oid);
 extern int catcls_get_server_compat_info (THREAD_ENTRY * thread_p, INTL_CODESET * charset_id_p, char *lang_buf,
 					  const int lang_buf_size, char *timezone_checksum);
 extern int catcls_get_db_collation (THREAD_ENTRY * thread_p, LANG_COLL_COMPAT ** db_collations, int *coll_cnt);
-extern int catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, time_t * log_record_time);
+extern int catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, DB_DATETIME * log_record_datetime);
 extern int catcls_find_and_set_cached_class_oid (THREAD_ENTRY * thread_p);
 
 static int catcls_initialize_class_oid_to_oid_hash_table (THREAD_ENTRY * thread_p, int num_entry);
@@ -5148,11 +5148,11 @@ exit:
  *
  *   return: NO_ERROR, or error code
  *   thread_p(in)  : thread context
- *   log_record_time(out): log_record_time
+ *   log_record_datetime(out): log record date/time
  *
  */
 int
-catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, time_t * log_record_time)
+catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, DB_DATETIME * log_record_datetime)
 {
   OID class_oid;
   OID inst_oid;
@@ -5160,8 +5160,7 @@ catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, time_t * log_rec
   HEAP_CACHE_ATTRINFO attr_info;
   HEAP_SCANCACHE scan_cache;
   RECDES recdes;
-  DB_DATETIME tmp_datetime;
-  time_t tmp_log_record_time = 0;
+  DB_DATETIME tmp_log_record_datetime = { 0, 0 };
   int log_record_time_att_id = -1;
   int error = NO_ERROR;
   int i;
@@ -5169,8 +5168,9 @@ catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, time_t * log_rec
   bool scan_cache_inited = false;
   int num_record = 0;
 
-  assert (log_record_time != NULL);
-  *log_record_time = 0;
+  assert (log_record_datetime != NULL);
+  log_record_datetime->date = 0;
+  log_record_datetime->time = 0;
 
   OID_SET_NULL (&class_oid);
   OID_SET_NULL (&inst_oid);
@@ -5279,21 +5279,20 @@ catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, time_t * log_rec
 	{
 	  if (heap_value->attrid == log_record_time_att_id)
 	    {
-	      tmp_log_record_time = 0;
+	      tmp_log_record_datetime.date = 0;
+	      tmp_log_record_datetime.time = 0;
 	      if (!DB_IS_NULL (&heap_value->dbvalue))
 		{
-		  tmp_datetime = *(db_get_datetime (&heap_value->dbvalue));
-		  tmp_datetime.time /= 1000;
-
-		  tmp_log_record_time = db_mktime (&tmp_datetime.date, &tmp_datetime.time);
+		  tmp_log_record_datetime = *(db_get_datetime (&heap_value->dbvalue));
 		}
 	      break;
 	    }
 	}
 
-      if (tmp_log_record_time > *log_record_time)
+      if (tmp_log_record_datetime.date > log_record_datetime->date
+	  && tmp_log_record_datetime.time > log_record_datetime->time)
 	{
-	  *log_record_time = tmp_log_record_time;
+	  *log_record_datetime = tmp_log_record_datetime;
 	}
 
       num_record++;

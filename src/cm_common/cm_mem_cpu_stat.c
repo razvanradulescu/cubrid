@@ -1126,7 +1126,7 @@ static STATDUMP_PROP statdump_offset[] = {
   {"Num_prior_lsa_list_removed", offsetof (T_CM_DB_EXEC_STAT, prior_lsa_list_removed)},
   {"Num_heap_stats_bestspace_entries", offsetof (T_CM_DB_EXEC_STAT, hf_stats_bestspace_entries)},
   {"Num_heap_stats_bestspace_maxed", offsetof (T_CM_DB_EXEC_STAT, hf_stats_bestspace_maxed)},
-  {"Time_ha_replication_delay", offsetof (T_CM_DB_EXEC_STAT, ha_repl_delay)},
+  {"Time_ha_replication_delay_msec", offsetof (T_CM_DB_EXEC_STAT, ha_repl_delay)},
   {"Num_plan_cache_add", offsetof (T_CM_DB_EXEC_STAT, pc_num_add)},
   {"Num_plan_cache_lookup", offsetof (T_CM_DB_EXEC_STAT, pc_num_lookup)},
   {"Num_plan_cache_hit", offsetof (T_CM_DB_EXEC_STAT, pc_num_hit)},

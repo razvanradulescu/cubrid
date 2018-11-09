@@ -375,7 +375,7 @@ static void log_daemons_init ();
 static void log_daemons_destroy ();
 
 // used by log_Check_ha_delay_info_daemon
-extern int catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, time_t * log_record_time);
+extern int catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, DB_DATETIME * log_record_datetime);
 #endif /* SERVER_MODE */
 
 /*
@@ -10578,11 +10578,11 @@ class log_check_ha_delay_info_daemon_task : public cubthread::entry_task
 	  return;
 	}
 
-      time_t log_record_time = 0;
+      DB_DATETIME log_record_datetime = { 0, 0 };
       int error_code;
-      int delay_limit_in_secs;
-      int acceptable_delay_in_secs;
-      int curr_delay_in_secs;
+      int delay_limit_in_msecs;
+      int acceptable_delay_in_msecs;
+      int curr_delay_in_msecs;
       HA_SERVER_STATE server_state;
 
       csect_enter (&thread_ref, CSECT_HA_SERVER_STATE, INF_WAIT);
@@ -10602,49 +10602,59 @@ class log_check_ha_delay_info_daemon_task : public cubthread::entry_task
 	{
 	  csect_exit (&thread_ref, CSECT_HA_SERVER_STATE);
 
-	  delay_limit_in_secs = prm_get_integer_value (PRM_ID_HA_DELAY_LIMIT_IN_SECS);
-	  acceptable_delay_in_secs = delay_limit_in_secs - prm_get_integer_value (PRM_ID_HA_DELAY_LIMIT_DELTA_IN_SECS);
+	  delay_limit_in_msecs = prm_get_integer_value (PRM_ID_HA_DELAY_LIMIT_IN_SECS) / 1000;
+	  acceptable_delay_in_msecs =
+            delay_limit_in_msecs - prm_get_integer_value (PRM_ID_HA_DELAY_LIMIT_DELTA_IN_SECS) / 1000;
 
-	  if (acceptable_delay_in_secs < 0)
+	  if (acceptable_delay_in_msecs < 0)
 	    {
-	      acceptable_delay_in_secs = 0;
+	      acceptable_delay_in_msecs = 0;
 	    }
 
-	  error_code = catcls_get_apply_info_log_record_time (&thread_ref, &log_record_time);
+	  error_code = catcls_get_apply_info_log_record_time (&thread_ref, &log_record_datetime);
 
-	  if (error_code == NO_ERROR && log_record_time > 0)
+	  if (error_code == NO_ERROR && (log_record_datetime.date > 0 && log_record_datetime.time > 0))
 	    {
-	      curr_delay_in_secs = (int) (time (NULL) - log_record_time);
-	      if (curr_delay_in_secs > 0)
+              DB_VALUE curr_sys_datetime;
+              db_sys_datetime (&curr_sys_datetime);
+              DB_DATETIME curr_datetime;
+
+              curr_datetime = *db_get_datetime (&curr_sys_datetime);
+
+              DB_BIGINT curr_total_msec = ((DB_BIGINT) curr_datetime.date) * MILLISECONDS_OF_ONE_DAY + curr_datetime.time;
+              DB_BIGINT log_record_total_msec = ((DB_BIGINT) log_record_datetime.date) * MILLISECONDS_OF_ONE_DAY + log_record_datetime.time;
+
+	      curr_delay_in_msecs = (int) (curr_total_msec - log_record_total_msec);
+	      if (curr_delay_in_msecs > 0)
 		{
-		  curr_delay_in_secs -= HA_DELAY_ERR_CORRECTION;
+		  curr_delay_in_msecs -= HA_DELAY_ERR_CORRECTION * 1000;
 		}
 
-	      if (delay_limit_in_secs > 0)
+	      if (delay_limit_in_msecs > 0)
 		{
-		  if (curr_delay_in_secs > delay_limit_in_secs)
+		  if (curr_delay_in_msecs > delay_limit_in_msecs)
 		    {
 		      if (!css_is_ha_repl_delayed ())
 			{
 			  er_set (ER_NOTIFICATION_SEVERITY, ARG_FILE_LINE, ER_HA_REPL_DELAY_DETECTED, 2,
-				  curr_delay_in_secs, delay_limit_in_secs);
+				  (int) (curr_delay_in_msecs * 1000), (int) (delay_limit_in_msecs * 1000));
 
 			  css_set_ha_repl_delayed ();
 			}
 		    }
-		  else if (curr_delay_in_secs <= acceptable_delay_in_secs)
+		  else if (curr_delay_in_msecs <= acceptable_delay_in_msecs)
 		    {
 		      if (css_is_ha_repl_delayed ())
 			{
 			  er_set (ER_NOTIFICATION_SEVERITY, ARG_FILE_LINE, ER_HA_REPL_DELAY_RESOLVED, 2,
-				  curr_delay_in_secs, acceptable_delay_in_secs);
+				  (int) (curr_delay_in_msecs * 1000), (int) (acceptable_delay_in_msecs * 1000));
 
 			  css_unset_ha_repl_delayed ();
 			}
 		    }
 		}
 
-	      perfmon_set_stat (&thread_ref, PSTAT_HA_REPL_DELAY, curr_delay_in_secs, true);
+	      perfmon_set_stat (&thread_ref, PSTAT_HA_REPL_DELAY, curr_delay_in_msecs, true);
 	    }
 	}
     }
