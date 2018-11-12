@@ -159,6 +159,8 @@
     } \
   while (0)
 
+#define UTIME_FROM_UTIME_MSEC (ut_msec) ((time_t) (ut_msec) / 1000)
+
 typedef struct la_cache_buffer LA_CACHE_BUFFER;
 struct la_cache_buffer
 {
@@ -3475,7 +3477,7 @@ la_retrieve_eot_time (LOG_PAGE * pgptr, LOG_LSA * lsa)
     }
   donetime = (LOG_REC_DONETIME *) ((char *) pg->area + offset);
 
-  return donetime->at_time;
+  return UTIME_FROM_UTIME_MSEC (donetime->at_time_with_millisec);
 }
 
 /*
