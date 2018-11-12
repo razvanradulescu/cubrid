@@ -1271,7 +1271,8 @@ extern "C"
     };
   };
 
-  /* Unix timestamp with milliseconds resolution (utime_millisec = utime * 1000 + milliseconds) */
+  /* Unix timestamp with milliseconds resolution (utime_millisec = utime * 1000 + milliseconds) 
+   * Note : should be kept as 8 bytes value, no matter how we interpret the data */
   typedef int64_t DB_UTIME_MILLISEC;
 /********************************************************/
 
