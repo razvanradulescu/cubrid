@@ -3206,7 +3206,7 @@ log_append_ha_server_state (THREAD_ENTRY * thread_p, int state)
   memset (ha_server_state, 0, sizeof (LOG_REC_HA_SERVER_STATE));
 
   ha_server_state->state = state;
-  ha_server_state->at_time = time (NULL);
+  ha_server_state->at_time_with_millisec = db_get_timestamp_with_millisec ();
 
   start_lsa = prior_lsa_next_record (thread_p, node, tdes);
 

@@ -287,7 +287,7 @@ struct la_info
   int cur_repl;			/* the index of the current repl_lists */
   int total_rows;		/* the # of rows that were replicated */
   int prev_total_rows;		/* the previous # of total_rows */
-  time_t log_record_time;	/* time of the last commit log record */
+  DB_UTIME_MILLISEC log_record_time;	/* time of the last commit log record */
   LA_COMMIT *commit_head;	/* queue list head */
   LA_COMMIT *commit_tail;	/* queue list tail */
   int last_deleted_archive_num;
@@ -1841,7 +1841,7 @@ la_update_ha_apply_info_start_time (void)
 }
 
 static int
-la_update_ha_apply_info_log_record_time (time_t new_time)
+la_update_ha_apply_info_log_record_time (DB_UTIME_MILLISEC new_time_with_millisec)
 {
 #define LA_IN_VALUE_COUNT       3
   int res;
@@ -1860,7 +1860,7 @@ la_update_ha_apply_info_log_record_time (time_t new_time)
 	    CT_HA_APPLY_INFO_NAME);
 
   /* 1. log_record_time */
-  db_localdatetime (&new_time, &datetime);
+  db_datetime_from_utime_with_millisec (&new_time_with_millisec, &datetime);
   db_make_datetime (&in_value[in_value_idx++], &datetime);
 
   /* 2. db_name */
@@ -6137,7 +6137,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 	}
       else if (la_is_repl_lists_empty ())
 	{
-	  (void) la_update_ha_apply_info_log_record_time (ha_server_state->at_time);
+	  (void) la_update_ha_apply_info_log_record_time (ha_server_state->at_time_with_millisec);
 	  error = la_log_commit (true);
 	  if (error != NO_ERROR)
 	    {

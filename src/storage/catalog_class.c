@@ -5280,7 +5280,7 @@ catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, DB_UTIME_MILLISE
 	    {
 	      if (!DB_IS_NULL (&heap_value->dbvalue))
 		{
-                  tmp_log_record_time = db_utime_with_millisec_from_datatime (db_get_datetime (&heap_value->dbvalue));
+                  tmp_log_record_time = db_utime_with_millisec_from_datetime (db_get_datetime (&heap_value->dbvalue));
 		}
 	      break;
 	    }

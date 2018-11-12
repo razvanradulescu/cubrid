@@ -113,6 +113,7 @@ extern DB_UTIME_MILLISEC db_diff_utime_with_millisec_utime (const DB_UTIME_MILLI
                                                             const DB_TIMESTAMP *utime);
 extern int db_get_sys_datetime (DB_DATETIME * datetime);
 extern DB_UTIME_MILLISEC db_get_timestamp_with_millisec (void);
-extern DB_UTIME_MILLISEC db_utime_with_millisec_from_datatime (const DB_DATETIME * datetime);
+extern DB_UTIME_MILLISEC db_utime_with_millisec_from_datetime (const DB_DATETIME * datetime);
+extern void db_datetime_from_utime_with_millisec (const DB_UTIME_MILLISEC * utime_millisec, DB_DATETIME *datetime);
 
 #endif /* _DB_DATE_H_ */

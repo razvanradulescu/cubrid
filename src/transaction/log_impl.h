@@ -761,7 +761,7 @@ struct log_rec_ha_server_state
   int state;			/* ha_Server_state */
   int dummy;			/* dummy for alignment */
 
-  INT64 at_time;		/* time recorded by active server */
+  DB_UTIME_MILLISEC at_time_with_millisec;		/* time recorded by active server */
 };
 
 #define LOG_SYSTEM_TRAN_INDEX 0	/* The recovery & vacuum worker system transaction index. */

@@ -5191,10 +5191,10 @@ db_get_timestamp_with_millisec (void)
 }
 
 /*
- * db_utime_with_millisec_from_datatime () -
+ * db_utime_with_millisec_from_datetime () -
  */
 DB_UTIME_MILLISEC
-db_utime_with_millisec_from_datatime (const DB_DATETIME * datetime)
+db_utime_with_millisec_from_datetime (const DB_DATETIME * datetime)
 {
   time_t utime;
   int time_without_millisec;
@@ -5209,4 +5209,20 @@ db_utime_with_millisec_from_datatime (const DB_DATETIME * datetime)
   utime_with_millisec = ((DB_UTIME_MILLISEC) utime) * 1000 + millisec;
 
   return utime_with_millisec;
+}
+
+/*
+ * db_datetime_from_utime_with_millisec () -
+ */
+void
+db_datetime_from_utime_with_millisec (const DB_UTIME_MILLISEC * utime_millisec, DB_DATETIME *datetime)
+{
+  time_t utime;
+  int millisec;
+
+  assert (utime_millisec != NULL);
+  utime = *utime_millisec / 1000;
+  millisec = *utime_millisec % 1000;
+
+  db_localdatetime_msec (&utime, millisec, datetime);
 }
