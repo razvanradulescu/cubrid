@@ -33,6 +33,7 @@
 #include "db_date.h"
 
 #include <assert.h>
+#include <sys/timeb.h>
 
 #include "error_manager.h"
 #include "chartype.h"
