@@ -112,7 +112,7 @@ extern int db_add_weeks_and_days_to_date (int *day, int *month, int *year, int w
 extern DB_UTIME_MILLISEC db_diff_utime_with_millisec_utime (const DB_UTIME_MILLISEC *timestamp_with_millisec,
                                                             const DB_TIMESTAMP *utime);
 extern int db_get_sys_datetime (DB_DATETIME * datetime);
-extern int db_get_timestamp_with_millisec (DB_UTIME_MILLISEC *timestamp_millisec);
+extern DB_UTIME_MILLISEC db_get_timestamp_with_millisec (void);
 extern DB_UTIME_MILLISEC db_utime_with_millisec_from_datatime (const DB_DATETIME * datetime);
 
 #endif /* _DB_DATE_H_ */

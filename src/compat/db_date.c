@@ -5172,24 +5172,23 @@ db_get_sys_datetime (DB_DATETIME * datetime)
 /*
  * db_get_timestamp_with_millisec () -
  *
- * return : error code
- * timestamp_mili (out) : timestamp with milliseconds
+ * return : current timestamp with milliseconds
  */
-int
-db_get_timestamp_with_millisec (DB_UTIME_MILLISEC *timestamp_millisec)
+DB_UTIME_MILLISEC
+db_get_timestamp_with_millisec (void)
 {
-  int error_status = NO_ERROR;
+  DB_UTIME_MILLISEC timestamp_millisec = -1;
   struct timeb tloc;
 
   if (ftime (&tloc) != 0)
     {
       error_status = ER_SYSTEM_DATE;
       er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, error_status, 0);
-      return error_status;
+      return timestamp_millisec;
     }
-  *timestamp_millisec = tloc.time * 1000 + tloc.millitm;
+  timestamp_millisec = tloc.time * 1000 + tloc.millitm;
 
-  return error_status;
+  return timestamp_millisec;
 }
 
 /*

@@ -4691,7 +4691,7 @@ log_append_donetime_internal (THREAD_ENTRY * thread_p, LOG_TDES * tdes, LOG_LSA 
     }
 
   donetime = (LOG_REC_DONETIME *) node->data_header;
-  (void) db_get_timestamp_with_millisec (&donetime->at_time_with_millisec);
+  donetime->at_time_with_millisec = db_get_timestamp_with_millisec ();
 
   if (with_lock == LOG_PRIOR_LSA_WITH_LOCK)
     {
@@ -10614,7 +10614,7 @@ class log_check_ha_delay_info_daemon_task : public cubthread::entry_task
 	  if (error_code == NO_ERROR && log_record_time_with_millisec > 0)
 	    {
               DB_UTIME_MILLISEC curr_time_with_millisec;
-              (void) db_get_timestamp_with_millisec (&curr_time_with_millisec);
+              curr_time_with_millisec = db_get_timestamp_with_millisec ();
 
 	      curr_delay_in_msecs = (int) (curr_time_with_millisec - log_record_time_with_millisec);
 #if 0
