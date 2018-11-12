@@ -723,7 +723,7 @@ struct log_rec_replication
 typedef struct log_rec_donetime LOG_REC_DONETIME;
 struct log_rec_donetime
 {
-  INT64 at_time;		/* Database creation time. For safety reasons */
+  DB_UTIME_MILLISEC at_time_with_millisec;    /* Database creation time in milliseconds (unix time reference) */
 };
 
 #define LOG_GET_LOG_RECORD_HEADER(log_page_p, lsa) \

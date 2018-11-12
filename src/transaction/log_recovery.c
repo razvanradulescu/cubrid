@@ -32,6 +32,7 @@
 #include <time.h>
 #include <assert.h>
 
+#include "db_date.h"
 #include "log_impl.h"
 #include "log_manager.h"
 #include "recovery.h"
@@ -1370,7 +1371,7 @@ log_rv_analysis_complete (THREAD_ENTRY * thread_p, int tran_id, LOG_LSA * log_ls
 {
   LOG_REC_DONETIME *donetime;
   int tran_index;
-  time_t last_at_time;
+  DB_BIGINT diff_time_msec = 0;
   char time_val[CTIME_MAX];
   LOG_LSA record_header_lsa;
 
@@ -1395,14 +1396,19 @@ log_rv_analysis_complete (THREAD_ENTRY * thread_p, int tran_id, LOG_LSA * log_ls
   LOG_READ_ADVANCE_WHEN_DOESNT_FIT (thread_p, sizeof (LOG_REC_DONETIME), log_lsa, log_page_p);
 
   donetime = (LOG_REC_DONETIME *) ((char *) log_page_p->area + log_lsa->offset);
-  last_at_time = (time_t) donetime->at_time;
-  if (stop_at != NULL && *stop_at != (time_t) (-1) && difftime (*stop_at, last_at_time) < 0)
+  if (stop_at != NULL && *stop_at != (time_t) (-1))
+    {
+      diff_time_msec = db_diff_utime_with_millisec_utime (&donetime->at_time_with_millisec,
+                                                          (const DB_TIMESTAMP *) stop_at);
+    }
+  
+  if (diff_time_msec >= 0)
     {
 #if !defined(NDEBUG)
       if (prm_get_bool_value (PRM_ID_LOG_TRACE_DEBUG))
 	{
 	  fprintf (stdout, msgcat_message (MSGCAT_CATALOG_CUBRID, MSGCAT_SET_LOG, MSGCAT_LOG_STARTS));
-	  (void) ctime_r (&last_at_time, time_val);
+          db_log_time_to_string (time_val, sizeof (time_val), &donetime->at_time_with_millisec);
 	  fprintf (stdout, msgcat_message (MSGCAT_CATALOG_CUBRID, MSGCAT_SET_LOG, MSGCAT_LOG_INCOMPLTE_MEDIA_RECOVERY),
 		   record_header_lsa.pageid, record_header_lsa.offset, time_val);
 	  fprintf (stdout, msgcat_message (MSGCAT_CATALOG_CUBRID, MSGCAT_SET_LOG, MSGCAT_LOG_STARTS));
@@ -2942,6 +2948,7 @@ log_recovery_redo (THREAD_ENTRY * thread_p, const LOG_LSA * start_redolsa, const
   LOG_ZIP *redo_unzip_ptr = NULL;
   bool is_diff_rec;
   bool is_mvcc_op = false;
+  DB_BIGINT diff_time_msec;
 
   aligned_log_pgbuf = PTR_ALIGN (log_pgbuf, MAX_ALIGNMENT);
 
@@ -3785,7 +3792,10 @@ log_recovery_redo (THREAD_ENTRY * thread_p, const LOG_LSA * start_redolsa, const
 		    LOG_READ_ADVANCE_WHEN_DOESNT_FIT (thread_p, sizeof (LOG_REC_DONETIME), &log_lsa, log_pgptr);
 		    donetime = (LOG_REC_DONETIME *) ((char *) log_pgptr->area + log_lsa.offset);
 
-		    if (difftime (*stopat, (time_t) donetime->at_time) < 0)
+                    diff_time_msec = db_diff_utime_with_millisec_utime (&donetime->at_time_with_millisec,
+                                                                        (const DB_TIMESTAMP *) stopat);
+
+		    if (diff_time_msec > 0)
 		      {
 			/* 
 			 * Stop the recovery process at this point

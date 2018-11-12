@@ -375,7 +375,7 @@ static void log_daemons_init ();
 static void log_daemons_destroy ();
 
 // used by log_Check_ha_delay_info_daemon
-extern int catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, DB_DATETIME * log_record_datetime);
+extern int catcls_get_apply_info_log_record_time (THREAD_ENTRY * thread_p, DB_UTIME_MILLISEC * log_record_time);
 #endif /* SERVER_MODE */
 
 /*
@@ -4691,7 +4691,7 @@ log_append_donetime_internal (THREAD_ENTRY * thread_p, LOG_TDES * tdes, LOG_LSA 
     }
 
   donetime = (LOG_REC_DONETIME *) node->data_header;
-  donetime->at_time = time (NULL);
+  (void) db_get_timestamp_with_millisec (&donetime->at_time_with_millisec);
 
   if (with_lock == LOG_PRIOR_LSA_WITH_LOCK)
     {
@@ -6933,14 +6933,12 @@ static LOG_PAGE *
 log_dump_record_transaction_finish (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_LSA * log_lsa, LOG_PAGE * log_page_p)
 {
   LOG_REC_DONETIME *donetime;
-  time_t tmp_time;
-  char time_val[CTIME_MAX];
+  char time_val[CTIME_MAX] = { 0 };
 
   /* Read the DATA HEADER */
   LOG_READ_ADVANCE_WHEN_DOESNT_FIT (thread_p, sizeof (*donetime), log_lsa, log_page_p);
   donetime = (LOG_REC_DONETIME *) ((char *) log_page_p->area + log_lsa->offset);
-  tmp_time = (time_t) donetime->at_time;
-  (void) ctime_r (&tmp_time, time_val);
+  db_log_time_to_string (time_val, sizeof (time_val), &donetime->at_time_with_millisec);
   fprintf (out_fp, ",\n     Transaction finish time at = %s\n", time_val);
 
   return log_page_p;
@@ -10578,7 +10576,7 @@ class log_check_ha_delay_info_daemon_task : public cubthread::entry_task
 	  return;
 	}
 
-      DB_DATETIME log_record_datetime = { 0, 0 };
+      DB_UTIME_MILLISEC log_record_time_with_millisec = 0;
       int error_code;
       int delay_limit_in_msecs;
       int acceptable_delay_in_msecs;
@@ -10611,24 +10609,20 @@ class log_check_ha_delay_info_daemon_task : public cubthread::entry_task
 	      acceptable_delay_in_msecs = 0;
 	    }
 
-	  error_code = catcls_get_apply_info_log_record_time (&thread_ref, &log_record_datetime);
+	  error_code = catcls_get_apply_info_log_record_time (&thread_ref, &log_record_time_with_millisec);
 
-	  if (error_code == NO_ERROR && (log_record_datetime.date > 0 && log_record_datetime.time > 0))
+	  if (error_code == NO_ERROR && log_record_time_with_millisec > 0)
 	    {
-              DB_VALUE curr_sys_datetime;
-              db_sys_datetime (&curr_sys_datetime);
-              DB_DATETIME curr_datetime;
+              DB_UTIME_MILLISEC curr_time_with_millisec;
+              (void) db_get_timestamp_with_millisec (&curr_time_with_millisec);
 
-              curr_datetime = *db_get_datetime (&curr_sys_datetime);
-
-              DB_BIGINT curr_total_msec = ((DB_BIGINT) curr_datetime.date) * MILLISECONDS_OF_ONE_DAY + curr_datetime.time;
-              DB_BIGINT log_record_total_msec = ((DB_BIGINT) log_record_datetime.date) * MILLISECONDS_OF_ONE_DAY + log_record_datetime.time;
-
-	      curr_delay_in_msecs = (int) (curr_total_msec - log_record_total_msec);
+	      curr_delay_in_msecs = (int) (curr_time_with_millisec - log_record_time_with_millisec);
+#if 0
 	      if (curr_delay_in_msecs > 0)
 		{
 		  curr_delay_in_msecs -= HA_DELAY_ERR_CORRECTION * 1000;
 		}
+#endif
 
 	      if (delay_limit_in_msecs > 0)
 		{

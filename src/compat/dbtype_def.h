@@ -1270,6 +1270,9 @@ extern "C"
       unsigned int zone_id;	/* geographical zone id */
     };
   };
+
+  /* Unix timestamp with milliseconds resolution (utime_millisec = utime * 1000 + milliseconds) */
+  typedef int64_t DB_UTIME_MILLISEC;
 /********************************************************/
 
 #ifdef __cplusplus

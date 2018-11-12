@@ -4385,6 +4385,46 @@ db_datetime_to_string2 (char *buf, int bufsize, DB_DATETIME * datetime)
 }
 
 /*
+ * db_log_time_to_string() - Print a log timestamp with milliseconds into a char buffer using for tran log format
+ * return : the number of characters actually printed.
+ * buf(out): a buffer to receive the printed representation
+ * bufsize(in): the size of that buffer
+ * timestamp_with_millisec(in): timestamp with milliseconds
+ *
+ * Note: version without PM and AM and formatted YYYY-MM-DD HH:MM:SS.MMM
+ */
+int
+db_log_time_to_string (char *buf, int bufsize, const DB_UTIME_MILLISEC *timestamp_with_millisec)
+{
+  time_t utime;
+  struct tm *c_time_struct, tm_val;
+  DB_DATETIME local_datetime;
+  DB_UTIME_MILLISEC milisec;
+  int error_status = NO_ERROR;
+
+  utime = *timestamp_with_millisec / 1000;
+  milisec = *timestamp_with_millisec % 1000;
+
+  c_time_struct = localtime_r (&utime, &tm_val);
+  if (c_time_struct == NULL)
+    {
+      error_status = ER_SYSTEM_DATE;
+      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, error_status, 0);
+      return error_status;
+    }
+
+  error_status = db_datetime_encode (&local_datetime, c_time_struct->tm_mon + 1, c_time_struct->tm_mday,
+                                     c_time_struct->tm_year + 1900, c_time_struct->tm_hour, c_time_struct->tm_min,
+                                     c_time_struct->tm_sec, (int) milisec);
+  if (error_status != NO_ERROR)
+    {
+      return error_status;
+    }
+
+  return db_datetime_to_string2 (buf, bufsize, &local_datetime);
+}
+
+/*
  * db_string_to_datetime_ex() -
  * return : 0 on success, -1 on error.
  * str(in): a buffer containing a date to be parsed
@@ -5076,4 +5116,98 @@ db_add_weeks_and_days_to_date (int *day, int *month, int *year, int weeks, int d
   *year = y;
 
   return NO_ERROR;
+}
+
+/*
+ * db_diff_utime_with_millisec_utime () -
+ *   return: difference in miliseconds
+ *   timestamp_with_millisec(in) : timestamp with milliseconds
+ *   utime(in) : timestamp (second resolution)
+ */
+DB_UTIME_MILLISEC
+db_diff_utime_with_millisec_utime (const DB_UTIME_MILLISEC *timestamp_with_millisec, const DB_TIMESTAMP *utime)
+{
+  DB_UTIME_MILLISEC diff_millisec;
+
+  diff_millisec = *timestamp_with_millisec - ((DB_UTIME_MILLISEC) *utime) * 1000;
+
+  return diff_millisec;
+}
+
+/*
+ * db_get_sys_datetime () -
+ */
+int
+db_get_sys_datetime (DB_DATETIME * datetime)
+{
+  int error_status = NO_ERROR;
+
+  struct timeb tloc;
+  struct tm *c_time_struct, tm_val;
+
+  assert (datetime != NULL);
+
+  if (ftime (&tloc) != 0)
+    {
+      error_status = ER_SYSTEM_DATE;
+      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, error_status, 0);
+      return error_status;
+    }
+
+  c_time_struct = localtime_r (&tloc.time, &tm_val);
+  if (c_time_struct == NULL)
+    {
+      error_status = ER_SYSTEM_DATE;
+      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, error_status, 0);
+      return error_status;
+    }
+
+  db_datetime_encode (datetime, c_time_struct->tm_mon + 1, c_time_struct->tm_mday, c_time_struct->tm_year + 1900,
+		      c_time_struct->tm_hour, c_time_struct->tm_min, c_time_struct->tm_sec, tloc.millitm);
+
+  return error_status;
+}
+
+/*
+ * db_get_timestamp_with_millisec () -
+ *
+ * return : error code
+ * timestamp_mili (out) : timestamp with milliseconds
+ */
+int
+db_get_timestamp_with_millisec (DB_UTIME_MILLISEC *timestamp_millisec)
+{
+  int error_status = NO_ERROR;
+  struct timeb tloc;
+
+  if (ftime (&tloc) != 0)
+    {
+      error_status = ER_SYSTEM_DATE;
+      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, error_status, 0);
+      return error_status;
+    }
+  *timestamp_millisec = tloc.time * 1000 + tloc.millitm;
+
+  return error_status;
+}
+
+/*
+ * db_utime_with_millisec_from_datatime () -
+ */
+DB_UTIME_MILLISEC
+db_utime_with_millisec_from_datatime (const DB_DATETIME * datetime)
+{
+  time_t utime;
+  int time_without_millisec;
+  int millisec;
+  DB_UTIME_MILLISEC utime_with_millisec;
+
+  assert (datetime != NULL);
+  time_without_millisec = datetime->time / 1000;
+  millisec = datetime->time % 1000;
+
+  utime = db_mktime ((DB_DATE *) &datetime->date, (DB_TIME *) &time_without_millisec);
+  utime_with_millisec = ((DB_UTIME_MILLISEC) utime) * 1000 + millisec;
+
+  return utime_with_millisec;
 }

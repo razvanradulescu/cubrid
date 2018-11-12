@@ -28,6 +28,7 @@
 #ident "$Id$"
 
 #include <time.h>
+#include "dbtype_def.h"
 
 /* DB_DATE functions */
 extern int db_date_weekday (DB_DATE * date);
@@ -46,6 +47,7 @@ extern int db_datetime_to_string (char *buf, int bufsize, DB_DATETIME * datetime
 extern int db_datetimetz_to_string (char *buf, int bufsize, DB_DATETIME * dt, const TZ_ID * tz_id);
 extern int db_datetimeltz_to_string (char *buf, int bufsize, DB_DATETIME * dt);
 extern int db_datetime_to_string2 (char *buf, int bufsize, DB_DATETIME * datetime);
+extern int db_log_time_to_string (char *buf, int bufsize, const DB_UTIME_MILLISEC *timestamp_with_millisec);
 extern int db_string_to_datetime (const char *str, DB_DATETIME * datetime);
 extern int db_string_to_datetime_ex (const char *str, int str_len, DB_DATETIME * datetime);
 extern int db_string_to_datetimetz (const char *str, DB_DATETIMETZ * dt_tz, bool * has_zone);
@@ -101,12 +103,16 @@ extern void db_localdatetime_msec (time_t * epoch_time, int millisecond, DB_DATE
 extern int julian_encode (int m, int d, int y);
 extern void julian_decode (int jul, int *monthp, int *dayp, int *yearp, int *weekp);
 extern int day_of_week (int jul_day);
-extern bool is_leap_year (int year);
 extern int db_tm_encode (struct tm *c_time_struct, DB_DATE * date, DB_TIME * timeval);
 extern int db_get_day_of_year (int year, int month, int day);
 extern int db_get_day_of_week (int year, int month, int day);
 extern int db_get_week_of_year (int year, int month, int day, int mode);
 extern int db_check_time_date_format (const char *format_s);
 extern int db_add_weeks_and_days_to_date (int *day, int *month, int *year, int weeks, int day_week);
+extern DB_UTIME_MILLISEC db_diff_utime_with_millisec_utime (const DB_UTIME_MILLISEC *timestamp_with_millisec,
+                                                            const DB_TIMESTAMP *utime);
+extern int db_get_sys_datetime (DB_DATETIME * datetime);
+extern int db_get_timestamp_with_millisec (DB_UTIME_MILLISEC *timestamp_millisec);
+extern DB_UTIME_MILLISEC db_utime_with_millisec_from_datatime (const DB_DATETIME * datetime);
 
 #endif /* _DB_DATE_H_ */

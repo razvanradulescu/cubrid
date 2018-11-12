@@ -12653,32 +12653,13 @@ db_sys_datetime (DB_VALUE * result_datetime)
 {
   int error_status = NO_ERROR;
   DB_DATETIME datetime;
-
-  struct timeb tloc;
-  struct tm *c_time_struct, tm_val;
-
-  assert (result_datetime != (DB_VALUE *) NULL);
-
-  /* now return null */
-  db_value_domain_init (result_datetime, DB_TYPE_DATETIME, DB_DEFAULT_PRECISION, DB_DEFAULT_SCALE);
-
-  if (ftime (&tloc) != 0)
+  
+  error_status = db_get_sys_datetime (&datetime);
+  if (error_status != NO_ERROR)
     {
-      error_status = ER_SYSTEM_DATE;
-      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, error_status, 0);
       return error_status;
     }
 
-  c_time_struct = localtime_r (&tloc.time, &tm_val);
-  if (c_time_struct == NULL)
-    {
-      error_status = ER_SYSTEM_DATE;
-      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, error_status, 0);
-      return error_status;
-    }
-
-  db_datetime_encode (&datetime, c_time_struct->tm_mon + 1, c_time_struct->tm_mday, c_time_struct->tm_year + 1900,
-		      c_time_struct->tm_hour, c_time_struct->tm_min, c_time_struct->tm_sec, tloc.millitm);
   db_make_datetime (result_datetime, &datetime);
 
   return error_status;
