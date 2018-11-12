@@ -1889,7 +1889,7 @@ la_update_ha_apply_info_log_record_time (DB_UTIME_MILLISEC new_time_with_millise
 
   if (res > 0)
     {
-      la_Info.log_record_time = new_time;
+      la_Info.log_record_time = new_time_with_millisec / 1000;
       la_Info.is_apply_info_updated = true;
     }
 
