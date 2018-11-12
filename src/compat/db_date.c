@@ -5182,8 +5182,7 @@ db_get_timestamp_with_millisec (void)
 
   if (ftime (&tloc) != 0)
     {
-      error_status = ER_SYSTEM_DATE;
-      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, error_status, 0);
+      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_SYSTEM_DATE, 0);
       return timestamp_millisec;
     }
   timestamp_millisec = tloc.time * 1000 + tloc.millitm;
