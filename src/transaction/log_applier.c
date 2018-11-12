@@ -159,7 +159,7 @@
     } \
   while (0)
 
-#define UTIME_FROM_UTIME_MSEC (ut_msec) ((time_t) (ut_msec) / 1000)
+#define UTIME_FROM_UTIME_MSEC(ut_msec) ((time_t) (ut_msec) / 1000)
 
 typedef struct la_cache_buffer LA_CACHE_BUFFER;
 struct la_cache_buffer
