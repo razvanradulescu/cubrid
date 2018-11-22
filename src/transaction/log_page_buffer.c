@@ -4352,6 +4352,9 @@ logpb_flush_all_append_pages (THREAD_ENTRY * thread_p)
   LOGWR_ENTRY *entry;
   THREAD_ENTRY *wait_thread_p;
 #endif /* SERVER_MODE */
+  PERF_UTIME_TRACKER time_track;
+
+  PERF_UTIME_TRACKER_START (thread_p, &time_track);
 
   assert (LOG_CS_OWN_WRITE_MODE (thread_p));
 
@@ -4390,6 +4393,7 @@ logpb_flush_all_append_pages (THREAD_ENTRY * thread_p)
 
   if (!need_flush)
     {
+      PERF_UTIME_TRACKER_TIME (thread_p, &time_track, PSTAT_LOG_FLUSH_APPENDED);
       return 0;
     }
 
@@ -5005,6 +5009,8 @@ logpb_flush_all_append_pages (THREAD_ENTRY * thread_p)
     }
 #endif /* SERVER_MODE */
 
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_track, PSTAT_LOG_FLUSH_APPENDED);
+
   return 1;
 
 error:
@@ -5023,6 +5029,8 @@ error:
       thread_p->event_stats.trace_log_flush_time = 0;
     }
 #endif /* SERVER_MODE */
+
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_track, PSTAT_LOG_FLUSH_APPENDED);
 
   return error_code;
 }
@@ -5078,6 +5086,9 @@ logpb_flush_pages (THREAD_ENTRY * thread_p, LOG_LSA * flush_lsa)
   bool async_commit, group_commit;
   LOG_LSA nxio_lsa;
   LOG_GROUP_COMMIT_INFO *group_commit_info = &log_Gl.group_commit_info;
+  PERF_UTIME_TRACKER time_track;
+
+  PERF_UTIME_TRACKER_START (thread_p, &time_track);
 
   assert (flush_lsa != NULL && !LSA_ISNULL (flush_lsa));
 
@@ -5087,6 +5098,7 @@ logpb_flush_pages (THREAD_ENTRY * thread_p, LOG_LSA * flush_lsa)
       logpb_flush_pages_direct (thread_p);
       LOG_CS_EXIT (thread_p);
 
+      PERF_UTIME_TRACKER_TIME (thread_p, &time_track, PSTAT_LOG_FLUSH);
       return;
     }
   assert (!LOG_CS_OWN_WRITE_MODE (thread_p));
@@ -5097,6 +5109,7 @@ logpb_flush_pages (THREAD_ENTRY * thread_p, LOG_LSA * flush_lsa)
       logpb_flush_pages_direct (thread_p);
       LOG_CS_EXIT (thread_p);
 
+      PERF_UTIME_TRACKER_TIME (thread_p, &time_track, PSTAT_LOG_FLUSH);
       return;
     }
 
@@ -5174,6 +5187,7 @@ logpb_flush_pages (THREAD_ENTRY * thread_p, LOG_LSA * flush_lsa)
 	  logpb_get_nxio_lsa (&nxio_lsa);
 	}
     }
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_track, PSTAT_LOG_FLUSH);
 #endif /* SERVER_MODE */
 }
 
@@ -5229,10 +5243,12 @@ logpb_invalid_all_append_pages (THREAD_ENTRY * thread_p)
 void
 logpb_flush_log_for_wal (THREAD_ENTRY * thread_p, const LOG_LSA * lsa_ptr)
 {
+  PERF_UTIME_TRACKER time_track;
+
+  PERF_UTIME_TRACKER_START (thread_p, &time_track);
+
   if (logpb_need_wal (lsa_ptr))
     {
-      perfmon_inc_stat (thread_p, PSTAT_LOG_NUM_WALS);
-
       LOG_CS_ENTER (thread_p);
       if (logpb_need_wal (lsa_ptr))
 	{
@@ -5254,6 +5270,9 @@ logpb_flush_log_for_wal (THREAD_ENTRY * thread_p, const LOG_LSA * lsa_ptr)
 	}
 #endif /* CUBRID_DEBUG */
     }
+
+  PERF_UTIME_TRACKER_TIME (thread_p, &time_track, PSTAT_LOG_WALS);
+
 }
 
 /*
