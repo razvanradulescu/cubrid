@@ -1627,7 +1627,7 @@ perfmon_server_calc_stats (UINT64 * stats)
   UINT64 total_fix_vacuum = 0;
   UINT64 total_fix_vacuum_hit = 0;
   UINT64 fix_time_usec = 0;
-  UNIT64 unfix_time_usec = 0;
+  UINT64 unfix_time_usec = 0;
   UINT64 lock_time_usec = 0;
   UINT64 hold_time_usec = 0;
   UINT64 total_promote_time = 0;
