@@ -504,6 +504,7 @@ typedef enum
   PSTAT_PB_PAGE_HOLD_ACQUIRE_TIME_10USEC,
   /* total time to acquire page fix (stored as 10 usec unit, displayed as miliseconds) */
   PSTAT_PB_PAGE_FIX_ACQUIRE_TIME_10USEC,
+  PSTAT_PB_PAGE_UNFIX_TIME_10USEC,
   /* ratio of time required to allocate a buffer for a page : (100 x (fix_time - lock_time - hold_time) / fix_time) x
    * 100 */
   PSTAT_PB_PAGE_ALLOCATE_TIME_RATIO,

@@ -433,6 +433,7 @@ PSTAT_METADATA pstat_Metadata[] = {
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_LOCK_ACQUIRE_TIME_10USEC, "Data_page_fix_lock_acquire_time_msec"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_HOLD_ACQUIRE_TIME_10USEC, "Data_page_fix_hold_acquire_time_msec"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_FIX_ACQUIRE_TIME_10USEC, "Data_page_fix_acquire_time_msec"),
+  PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_UNFIX_TIME_10USEC, "Data_page_unfix_time_msec"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_ALLOCATE_TIME_RATIO, "Data_page_allocate_time_ratio"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_PROMOTE_SUCCESS, "Data_page_total_promote_success"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_PROMOTE_FAILED, "Data_page_total_promote_fail"),
@@ -1626,6 +1627,7 @@ perfmon_server_calc_stats (UINT64 * stats)
   UINT64 total_fix_vacuum = 0;
   UINT64 total_fix_vacuum_hit = 0;
   UINT64 fix_time_usec = 0;
+  UNIT64 unfix_time_usec = 0;
   UINT64 lock_time_usec = 0;
   UINT64 hold_time_usec = 0;
   UINT64 total_promote_time = 0;
@@ -1655,6 +1657,9 @@ perfmon_server_calc_stats (UINT64 * stats)
 			      total_unfix_vacuum_dirty += counter;
 			    }
 			}
+
+                      counter = stats[pstat_Metadata[PSTAT_PBX_UNFIX_TIME_COUNTERS].start_offset + offset];
+                      unfix_time_usec += counter;
 		    }
 		}
 	    }
@@ -1744,6 +1749,7 @@ perfmon_server_calc_stats (UINT64 * stats)
   stats[pstat_Metadata[PSTAT_PB_PAGE_LOCK_ACQUIRE_TIME_10USEC].start_offset] = 100 * lock_time_usec / 1000;
   stats[pstat_Metadata[PSTAT_PB_PAGE_HOLD_ACQUIRE_TIME_10USEC].start_offset] = 100 * hold_time_usec / 1000;
   stats[pstat_Metadata[PSTAT_PB_PAGE_FIX_ACQUIRE_TIME_10USEC].start_offset] = 100 * fix_time_usec / 1000;
+  stats[pstat_Metadata[PSTAT_PB_PAGE_UNFIX_TIME_10USEC].start_offset] = 100 * unfix_time_usec / 1000;
 
   stats[pstat_Metadata[PSTAT_PB_PAGE_ALLOCATE_TIME_RATIO].start_offset] =
     SAFE_DIV ((stats[pstat_Metadata[PSTAT_PB_PAGE_FIX_ACQUIRE_TIME_10USEC].start_offset] -
