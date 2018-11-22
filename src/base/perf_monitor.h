@@ -278,7 +278,7 @@ typedef enum
   PSTAT_FILE_NUM_REMOVES,
   PSTAT_FILE_NUM_IOREADS,
   PSTAT_FILE_NUM_IOWRITES,
-  PSTAT_FILE_NUM_IOSYNCHES,
+  PSTAT_FILE_IOSYNCHES,
   PSTAT_FILE_IOSYNC_ALL,
   PSTAT_FILE_NUM_PAGE_ALLOCS,
   PSTAT_FILE_NUM_PAGE_DEALLOCS,
@@ -308,9 +308,11 @@ typedef enum
   PSTAT_LOG_NUM_ARCHIVES,
   PSTAT_LOG_NUM_START_CHECKPOINTS,
   PSTAT_LOG_NUM_END_CHECKPOINTS,
-  PSTAT_LOG_NUM_WALS,
+  PSTAT_LOG_WALS,
   PSTAT_LOG_NUM_REPLACEMENTS_IOWRITES,
   PSTAT_LOG_NUM_REPLACEMENTS,
+  PSTAT_LOG_FLUSH,
+  PSTAT_LOG_FLUSH_APPENDED,
 
   /* Execution statistics for the lock manager */
   PSTAT_LK_NUM_ACQUIRED_ON_PAGES,
@@ -503,6 +505,7 @@ typedef enum
   PSTAT_PB_PAGE_HOLD_ACQUIRE_TIME_10USEC,
   /* total time to acquire page fix (stored as 10 usec unit, displayed as miliseconds) */
   PSTAT_PB_PAGE_FIX_ACQUIRE_TIME_10USEC,
+  PSTAT_PB_PAGE_UNFIX_TIME_10USEC,
   /* ratio of time required to allocate a buffer for a page : (100 x (fix_time - lock_time - hold_time) / fix_time) x
    * 100 */
   PSTAT_PB_PAGE_ALLOCATE_TIME_RATIO,
@@ -608,6 +611,7 @@ typedef enum
   PSTAT_PBX_LOCK_TIME_COUNTERS,
   PSTAT_PBX_HOLD_TIME_COUNTERS,
   PSTAT_PBX_FIX_TIME_COUNTERS,
+  PSTAT_PBX_UNFIX_TIME_COUNTERS,
   PSTAT_MVCC_SNAPSHOT_COUNTERS,
   PSTAT_OBJ_LOCK_TIME_COUNTERS,
 
@@ -1512,6 +1516,8 @@ extern void perfmon_pbx_hold_acquire_time (THREAD_ENTRY * thread_p, int page_typ
 					   UINT64 amount);
 extern void perfmon_pbx_fix_acquire_time (THREAD_ENTRY * thread_p, int page_type, int page_found_mode, int latch_mode,
 					  int cond_type, UINT64 amount);
+extern void perfmon_pbx_unfix_time (THREAD_ENTRY * thread_p, int page_type, int buf_dirty, int dirtied_by_holder,
+                                    int holder_latch, UINT64 amount);
 extern void perfmon_mvcc_snapshot (THREAD_ENTRY * thread_p, int snapshot, int rec_type, int visibility);
 
 #endif /* SERVER_MODE || SA_MODE */

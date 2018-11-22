@@ -2422,6 +2422,14 @@ pgbuf_unfix (THREAD_ENTRY * thread_p, PAGE_PTR pgptr)
   PGBUF_HOLDER_STAT holder_perf_stat;
   PERF_PAGE_TYPE perf_page_type = PERF_PAGE_UNKNOWN;
   bool is_perf_tracking;
+  TSC_TICKS start_tick, end_tick;
+  TSCTIMEVAL tv_diff;
+  
+  is_perf_tracking = perfmon_is_perf_tracking ();
+  if (is_perf_tracking)
+    {
+      tsc_getticks (&start_tick);
+    }
 
 #if defined(CUBRID_DEBUG)
   LOG_LSA restart_lsa;
@@ -2498,7 +2506,6 @@ pgbuf_unfix (THREAD_ENTRY * thread_p, PAGE_PTR pgptr)
     }
 #endif /* CUBRID_DEBUG */
 
-  is_perf_tracking = perfmon_is_perf_tracking ();
   if (is_perf_tracking)
     {
       perf_page_type = pgbuf_get_page_type_for_stat (thread_p, pgptr);
@@ -2606,6 +2613,15 @@ pgbuf_unfix (THREAD_ENTRY * thread_p, PAGE_PTR pgptr)
       PGBUF_BCB_UNLOCK (bufptr);
     }
 #endif /* CUBRID_DEBUG */
+
+  if (is_perf_tracking)
+    {
+      tsc_getticks (&end_tick);
+      tsc_elapsed_time_usec (&tv_diff, end_tick, start_tick);
+      INT64 unfix_time = tv_diff.tv_sec * 1000000LL + tv_diff.tv_usec;
+      perfmon_pbx_unfix_time (thread_p, perf_page_type, holder_perf_stat.dirty_before_hold,
+			      holder_perf_stat.dirtied_by_holder, perf_holder_latch, unfix_time);
+    }
 }
 
 /*

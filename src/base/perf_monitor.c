@@ -166,7 +166,7 @@ PSTAT_METADATA pstat_Metadata[] = {
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_FILE_NUM_REMOVES, "Num_file_removes"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_FILE_NUM_IOREADS, "Num_file_ioreads"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_FILE_NUM_IOWRITES, "Num_file_iowrites"),
-  PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_FILE_NUM_IOSYNCHES, "Num_file_iosynches"),
+  PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_FILE_IOSYNCHES, "file_iosynches"),
   PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_FILE_IOSYNC_ALL, "file_iosync_all"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_FILE_NUM_PAGE_ALLOCS, "Num_file_page_allocs"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_FILE_NUM_PAGE_DEALLOCS, "Num_file_page_deallocs"),
@@ -196,9 +196,11 @@ PSTAT_METADATA pstat_Metadata[] = {
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_LOG_NUM_ARCHIVES, "Num_log_archives"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_LOG_NUM_START_CHECKPOINTS, "Num_log_start_checkpoints"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_LOG_NUM_END_CHECKPOINTS, "Num_log_end_checkpoints"),
-  PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_LOG_NUM_WALS, "Num_log_wals"),
+  PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_LOG_WALS, "log_wals"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_LOG_NUM_REPLACEMENTS_IOWRITES, "Num_log_page_iowrites_for_replacement"),
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_LOG_NUM_REPLACEMENTS, "Num_log_page_replacements"),
+  PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_LOG_FLUSH, "log_flush"),
+  PSTAT_METADATA_INIT_COUNTER_TIMER (PSTAT_LOG_FLUSH_APPENDED, "log_appended"),
 
   /* Execution statistics for the lock manager */
   PSTAT_METADATA_INIT_SINGLE_ACC (PSTAT_LK_NUM_ACQUIRED_ON_PAGES, "Num_page_locks_acquired"),
@@ -399,6 +401,7 @@ PSTAT_METADATA pstat_Metadata[] = {
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_LOCK_ACQUIRE_TIME_10USEC, "Data_page_fix_lock_acquire_time_msec"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_HOLD_ACQUIRE_TIME_10USEC, "Data_page_fix_hold_acquire_time_msec"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_FIX_ACQUIRE_TIME_10USEC, "Data_page_fix_acquire_time_msec"),
+  PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_UNFIX_TIME_10USEC, "Data_page_unfix_time_msec"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_ALLOCATE_TIME_RATIO, "Data_page_allocate_time_ratio"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_PROMOTE_SUCCESS, "Data_page_total_promote_success"),
   PSTAT_METADATA_INIT_COMPUTED_RATIO (PSTAT_PB_PAGE_PROMOTE_FAILED, "Data_page_total_promote_fail"),
@@ -518,6 +521,10 @@ PSTAT_METADATA pstat_Metadata[] = {
 			       &f_dump_in_file_Time_data_page_fix_acquire_time,
 			       &f_dump_in_buffer_Time_data_page_fix_acquire_time,
 			       &f_load_Time_data_page_fix_acquire_time),
+  PSTAT_METADATA_INIT_COMPLEX (PSTAT_PBX_UNFIX_TIME_COUNTERS, "Time_data_page_unfix_time",
+                               &f_dump_in_file_Num_data_page_unfix_ext,
+                               &f_dump_in_buffer_Num_data_page_unfix_ext,
+                               &f_load_Num_data_page_unfix_ext),
   PSTAT_METADATA_INIT_COMPLEX (PSTAT_MVCC_SNAPSHOT_COUNTERS, "Num_mvcc_snapshot_ext",
 			       &f_dump_in_file_Num_mvcc_snapshot_ext, &f_dump_in_buffer_Num_mvcc_snapshot_ext,
 			       &f_load_Num_mvcc_snapshot_ext),
@@ -2206,6 +2213,39 @@ perfmon_pbx_fix_acquire_time (THREAD_ENTRY * thread_p, int page_type, int page_f
 }
 
 /*
+ *   perfmon_pbx_unfix_time - 
+ *   return: none
+ */
+void
+perfmon_pbx_unfix_time (THREAD_ENTRY * thread_p, int page_type, int buf_dirty, int dirtied_by_holder,
+                        int holder_latch, UINT64 amount)
+{
+  int module;
+  int offset;
+
+  assert (pstat_Global.initialized);
+
+  module = perfmon_get_module_type (thread_p);
+
+  assert (module >= PERF_MODULE_SYSTEM && module < PERF_MODULE_CNT);
+
+  assert (page_type >= PERF_PAGE_UNKNOWN && page_type < PERF_PAGE_CNT);
+
+  assert (buf_dirty == 0 || buf_dirty == 1);
+
+  assert (dirtied_by_holder == 0 || dirtied_by_holder == 1);
+
+  assert (holder_latch >= PERF_HOLDER_LATCH_READ && holder_latch < PERF_HOLDER_LATCH_CNT);
+
+  offset = PERF_PAGE_UNFIX_STAT_OFFSET (module, page_type, buf_dirty, dirtied_by_holder, holder_latch);
+  
+  assert (offset < PERF_PAGE_UNFIX_COUNTERS);
+  
+  assert (amount > 0);
+  perfmon_add_stat_at_offset (thread_p, PSTAT_PBX_UNFIX_TIME_COUNTERS, offset, amount);
+}
+
+/*
  *   perfmon_mvcc_snapshot - 
  *   return: none
  */
@@ -2538,6 +2578,7 @@ perfmon_server_calc_stats (UINT64 * stats)
   UINT64 total_fix_vacuum = 0;
   UINT64 total_fix_vacuum_hit = 0;
   UINT64 fix_time_usec = 0;
+  UNIT64 unfix_time_usec = 0;
   UINT64 lock_time_usec = 0;
   UINT64 hold_time_usec = 0;
   UINT64 total_promote_time = 0;
@@ -2567,6 +2608,9 @@ perfmon_server_calc_stats (UINT64 * stats)
 			      total_unfix_vacuum_dirty += counter;
 			    }
 			}
+
+                      counter = stats[pstat_Metadata[PSTAT_PBX_UNFIX_TIME_COUNTERS].start_offset + offset];
+                      unfix_time_usec += counter;
 		    }
 		}
 	    }
@@ -2656,6 +2700,7 @@ perfmon_server_calc_stats (UINT64 * stats)
   stats[pstat_Metadata[PSTAT_PB_PAGE_LOCK_ACQUIRE_TIME_10USEC].start_offset] = 100 * lock_time_usec / 1000;
   stats[pstat_Metadata[PSTAT_PB_PAGE_HOLD_ACQUIRE_TIME_10USEC].start_offset] = 100 * hold_time_usec / 1000;
   stats[pstat_Metadata[PSTAT_PB_PAGE_FIX_ACQUIRE_TIME_10USEC].start_offset] = 100 * fix_time_usec / 1000;
+  stats[pstat_Metadata[PSTAT_PB_PAGE_UNFIX_TIME_10USEC].start_offset] = 100 * unfix_time_usec / 1000;
 
   stats[pstat_Metadata[PSTAT_PB_PAGE_ALLOCATE_TIME_RATIO].start_offset] =
     SAFE_DIV ((stats[pstat_Metadata[PSTAT_PB_PAGE_FIX_ACQUIRE_TIME_10USEC].start_offset] -

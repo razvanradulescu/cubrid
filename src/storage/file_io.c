@@ -4281,6 +4281,8 @@ fileio_synchronize (THREAD_ENTRY * thread_p, int vol_fd, const char *vlabel)
 #if defined (SERVER_MODE)
   static pthread_mutex_t inc_cnt_mutex = PTHREAD_MUTEX_INITIALIZER;
   int r;
+  PERF_UTIME_TRACKER time_track;
+  PERF_UTIME_TRACKER_START (thread_p, &time_track);
 #endif
   static int inc_cnt = 0;
 #if defined(USE_AIO)
@@ -4357,7 +4359,9 @@ fileio_synchronize (THREAD_ENTRY * thread_p, int vol_fd, const char *vlabel)
 	}
 #endif
 
-      perfmon_inc_stat (thread_p, PSTAT_FILE_NUM_IOSYNCHES);
+#if defined (SERVER_MODE)
+      PERF_UTIME_TRACKER_TIME (thread_p, &time_track, PSTAT_FILE_IOSYNCHES);
+#endif
       return vol_fd;
     }
 }
