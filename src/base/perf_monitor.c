@@ -2241,7 +2241,6 @@ perfmon_pbx_unfix_time (THREAD_ENTRY * thread_p, int page_type, int buf_dirty, i
   
   assert (offset < PERF_PAGE_UNFIX_COUNTERS);
   
-  assert (amount > 0);
   perfmon_add_stat_at_offset (thread_p, PSTAT_PBX_UNFIX_TIME_COUNTERS, offset, amount);
 }
 
