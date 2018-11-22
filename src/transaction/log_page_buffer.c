@@ -4914,8 +4914,6 @@ logpb_flush_log_for_wal (THREAD_ENTRY * thread_p, const LOG_LSA * lsa_ptr)
 
   if (logpb_need_wal (lsa_ptr))
     {
-      perfmon_inc_stat (thread_p, PSTAT_LOG_NUM_WALS);
-
       LOG_CS_ENTER (thread_p);
       if (logpb_need_wal (lsa_ptr))
 	{
