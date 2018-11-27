@@ -3530,7 +3530,7 @@ start:
 	  /* Nothing to do. Everything flushed. */
 	  assert (dwb_Global.helper_flush_block == NULL);
 	  dwb_log ("dwb_flush_force: Everything flushed\n");
-	  goto end;
+	  return NO_ERROR;
 	}
 
       if (DWB_IS_MODIFYING_STRUCTURE (initial_position_with_flags))
