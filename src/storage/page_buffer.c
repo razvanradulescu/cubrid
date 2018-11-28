@@ -8346,7 +8346,6 @@ pgbuf_get_victim (THREAD_ENTRY * thread_p)
       current_consume_cursor = pgbuf_Pool.shared_lrus_with_victims->get_consumer_cursor ();
     }
   while (!has_flush_thread && !pgbuf_Pool.shared_lrus_with_victims->is_empty ()
-	 && ((current_consume_cursor - initial_consume_cursor) <= pgbuf_Pool.num_LRU_list)
 	 && (++nloops <= pgbuf_Pool.num_LRU_list));
   /* todo: maybe we can find a less complicated condition of looping. Probably no need to use nloops <= pgbuf_Pool.num_LRU_list. */
   if (detailed_perf)
