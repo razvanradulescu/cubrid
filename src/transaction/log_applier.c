@@ -159,6 +159,33 @@
     } \
   while (0)
 
+#define TIMER_START(time_tracker) \
+  do \
+    { \
+      tsc_getticks (&(time_tracker)->start_tick); \
+    } \
+  while (false)
+
+#define TIMER_END(time_tracker) \
+  do \
+    { \
+      tsc_getticks (&(time_tracker)->end_tick); \
+      (time_tracker)->total_time += tsc_elapsed_utime ((time_tracker)->end_tick,  (time_tracker)->start_tick); \
+      (time_tracker)->cnt += 1; \
+    } \
+  while (false)
+
+struct time_tracker
+{
+  TSC_TICKS start_tick;
+  TSC_TICKS end_tick;
+  UINT64 cnt;
+  UINT64 total_time;
+
+  time_tracker () : start_tick ({0}), end_tick ({0}), cnt (0), total_time (0)
+    {
+    }
+};
 typedef struct la_cache_buffer LA_CACHE_BUFFER;
 struct la_cache_buffer
 {
@@ -545,6 +572,42 @@ static void la_print_repl_filter_info (void);
 
 static int check_reinit_copylog (void);
 
+time_tracker process_log_record_timer;
+time_tracker flush_repl_timer;
+
+
+static void
+print_time_trackers (void)
+{
+  char sql_log_err[1024];
+  static time_t prev_time = (time_t) 0;
+  time_t tloc;
+  char str_time[128];
+  struct tm tmloc;
+
+  tloc = time (NULL);
+
+  if (tloc <= prev_time)
+    {
+      return;
+    }
+  prev_time = tloc;
+  localtime_r (&tloc, &tmloc);
+
+  strftime (str_time, sizeof (str_time), "%a %B %d %H:%M:%S %Z %Y", &tmloc);
+    
+  snprintf (sql_log_err, sizeof (sql_log_err),
+            "%s\n"
+            "LOG_RECORD_TIMER : %16llu,%16llu\n"
+            "FLUSH_REPL_TIMER : %16llu,%16llu\n",
+            str_time,
+            process_log_record_timer.cnt, process_log_record_timer.total_time,
+            flush_repl_timer.cnt, flush_repl_timer.total_time);
+
+  er_stack_push ();
+  er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_HA_GENERIC_ERROR, 1, sql_log_err);
+  er_stack_pop ();
+}
 /*
  * la_shutdown_by_signal() - When the process catches the SIGTERM signal,
  *                                it does the shutdown process.
@@ -4633,7 +4696,10 @@ la_flush_repl_items (bool immediate)
 
   if (la_Info.num_unflushed >= LA_MAX_UNFLUSHED_REPL_ITEMS || immediate == true)
     {
+      print_time_trackers ();
+      TIMER_START (&flush_repl_timer);
       error = locator_repl_flush_all ();
+      TIMER_END (&flush_repl_timer);
       if (error == ER_LC_PARTIALLY_FAILED_TO_FLUSH)
 	{
 	  while (true)
@@ -5936,6 +6002,8 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
   char buffer[256];
   time_t eot_time;
 
+  TIMER_START (&process_log_record_timer);
+
   if (lrec->trid == NULL_TRANID || LSA_GT (&lrec->prev_tranlsa, final) || LSA_GT (&lrec->back_lsa, final))
     {
       if (lrec->type != LOG_END_OF_LOG)
@@ -5945,6 +6013,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 	  er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_HA_LA_INVALID_REPL_LOG_RECORD, 10, final->pageid, final->offset,
 		  lrec->forw_lsa.pageid, lrec->forw_lsa.offset, lrec->back_lsa.pageid, lrec->back_lsa.offset,
 		  lrec->trid, lrec->prev_tranlsa.pageid, lrec->prev_tranlsa.offset, lrec->type);
+          TIMER_END (&process_log_record_timer);
 	  return ER_LOG_PAGE_CORRUPTED;
 	}
     }
@@ -5961,10 +6030,12 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 	  error = er_errid ();
 	  if (error != NO_ERROR)
 	    {
+              TIMER_END (&process_log_record_timer);
 	      return error;
 	    }
 	  else
 	    {
+              TIMER_END (&process_log_record_timer);
 	      return ER_FAILED;
 	    }
 	}
@@ -5994,6 +6065,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 #endif
 	  la_Info.is_end_of_record = true;
 	}
+      TIMER_END (&process_log_record_timer);
       return ER_INTERRUPTED;
 
     case LOG_REPLICATION_DATA:
@@ -6003,6 +6075,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
       if (error != NO_ERROR)
 	{
 	  la_applier_need_shutdown = true;
+          TIMER_END (&process_log_record_timer);
 	  return error;
 	}
       break;
@@ -6026,6 +6099,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 	  if (error != NO_ERROR)
 	    {
 	      la_applier_need_shutdown = true;
+              TIMER_END (&process_log_record_timer);
 	      return error;
 	    }
 
@@ -6035,6 +6109,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 	      error = la_delay_replica (eot_time);
 	      if (error != NO_ERROR)
 		{
+                  TIMER_END (&process_log_record_timer);
 		  return error;
 		}
 	    }
@@ -6060,16 +6135,19 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 		    default:
 		      er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_NET_SERVER_COMM_ERROR, 1,
 			      "cannot connect with server");
+                      TIMER_END (&process_log_record_timer);
 		      return error;
 		    }
 		}
 	      else if (error == ER_HA_LA_EXCEED_MAX_MEM_SIZE)
 		{
 		  la_applier_need_shutdown = true;
+                  TIMER_END (&process_log_record_timer);
 		  return error;
 		}
 	      else if (error == ER_LC_PARTIALLY_FAILED_TO_FLUSH || error == ER_LC_FAILED_TO_FLUSH_REPL_ITEMS)
 		{
+                  TIMER_END (&process_log_record_timer);
 		  return error;
 		}
 
@@ -6097,6 +6175,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
       if (error != NO_ERROR)
 	{
 	  la_applier_need_shutdown = true;
+          TIMER_END (&process_log_record_timer);
 	  return error;
 	}
       break;
@@ -6107,6 +6186,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
       er_set (ER_NOTIFICATION_SEVERITY, ARG_FILE_LINE, ER_HA_GENERIC_ERROR, 1, buffer);
 
       LSA_COPY (final, &lrec->forw_lsa);
+      TIMER_END (&process_log_record_timer);
       return ER_INTERRUPTED;
 
     case LOG_END_CHKPT:
@@ -6130,6 +6210,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 
 	      la_Info.is_role_changed = true;
 
+              TIMER_END (&process_log_record_timer);
 	      return ER_INTERRUPTED;
 	    }
 	}
@@ -6139,6 +6220,7 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 	  error = la_log_commit (true);
 	  if (error != NO_ERROR)
 	    {
+              TIMER_END (&process_log_record_timer);
 	      return error;
 	    }
 	}
@@ -6166,9 +6248,11 @@ la_log_record_process (LOG_RECORD_HEADER * lrec, LOG_LSA * final, LOG_PAGE * pg_
 	      lrec->forw_lsa.pageid, lrec->forw_lsa.offset, lrec->back_lsa.pageid, lrec->back_lsa.offset, lrec->trid,
 	      lrec->prev_tranlsa.pageid, lrec->prev_tranlsa.offset, lrec->type);
 
+      TIMER_END (&process_log_record_timer);
       return ER_LOG_PAGE_CORRUPTED;
     }
 
+  TIMER_END (&process_log_record_timer);
   return NO_ERROR;
 }
 
