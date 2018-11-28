@@ -595,7 +595,7 @@ print_time_trackers (void)
       return;
     }
   prev_time = tloc;
-  localtime_r (ts, &tmloc);
+  localtime_r (tloc, &tmloc);
 
   strftime (str_time, sizeof (str_time), "%a %B %d %H:%M:%S %Z %Y", &tmloc);
     
