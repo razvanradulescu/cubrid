@@ -583,10 +583,27 @@ static void
 print_time_trackers (void)
 {
   char sql_log_err[1024];
+  static time_t prev_time = (time_t) 0;
+  time_t tloc;
+  char str_time[128];
+  struct tm tmloc;
+
+  tloc = time (NULL);
+
+  if (tloc <= prev_time)
+    {
+      return;
+    }
+  prev_time = tloc;
+  localtime_r (ts, &tmloc);
+
+  strftime (str_time, sizeof (str_time), "%a %B %d %H:%M:%S %Z %Y", &tmloc);
     
-  snprintf (sql_log_err, sizeof (sql_log_err), 
+  snprintf (sql_log_err, sizeof (sql_log_err),
+            "%s\n"
             "LOG_RECORD_TIMER : %16llu,%16llu\n"
             "FLUSH_REPL_TIMER : %16llu,%16llu\n",
+            str_time,
             process_log_record_timer.cnt, process_log_record_timer.total_time,
             flush_repl_timer.cnt, flush_repl_timer.total_time);
 
