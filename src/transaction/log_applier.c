@@ -8004,9 +8004,9 @@ la_apply_log_file (const char *database_name, const char *log_path, const int ma
 	  /* we should fetch final log page from disk not cache buffer */
 	  la_decache_page_buffers (la_Info.final_lsa.pageid, LOGPAGEID_MAX);
 
-          START_TIMER (&reinit_timer);
+          TIMER_START (&reinit_timer);
 	  error = check_reinit_copylog ();
-          END_TIMER (&reinit_timer);
+          TIMER_END (&reinit_timer);
 	  if (error != NO_ERROR)
 	    {
 	      la_applier_need_shutdown = true;
@@ -8112,9 +8112,9 @@ la_apply_log_file (const char *database_name, const char *log_path, const int ma
 	    }
 
 	  /* get the target page from log */
-          START_TIMER (&get_log_page_timer);
+          TIMER_START (&get_log_page_timer);
 	  log_buf = la_get_page_buffer (la_Info.final_lsa.pageid);
-          END_TIMER (&get_log_page_timer);
+          TIMER_END (&get_log_page_timer);
 	  LSA_COPY (&old_lsa, &la_Info.final_lsa);
 
 	  if (log_buf == NULL)
@@ -8332,9 +8332,9 @@ la_apply_log_file (const char *database_name, const char *log_path, const int ma
 	  /* commit */
 	  la_get_adaptive_time_commit_interval (&time_commit_interval, delay_hist);
 
-          START_TIMER (&check_commit_timer);
+          TIMER_START (&check_commit_timer);
 	  error = la_check_time_commit (&time_commit, time_commit_interval);
-          END_TIMER (&check_commit_timer);
+          TIMER_END (&check_commit_timer);
 	  if (error != NO_ERROR)
 	    {
 	      /* check connection error */
