@@ -53,6 +53,34 @@
 
 #define LOGWR_COPY_LOG_BUFFER_NPAGES      LOGPB_BUFFER_NPAGES_LOWER
 
+#define TIMER_START(time_tracker) \
+  do \
+    { \
+      tsc_getticks (&(time_tracker)->start_tick); \
+    } \
+  while (false)
+
+#define TIMER_END(time_tracker) \
+  do \
+    { \
+      tsc_getticks (&(time_tracker)->end_tick); \
+      (time_tracker)->total_time += tsc_elapsed_utime ((time_tracker)->end_tick,  (time_tracker)->start_tick); \
+      (time_tracker)->cnt += 1; \
+    } \
+  while (false)
+
+struct time_tracker
+{
+  TSC_TICKS start_tick;
+  TSC_TICKS end_tick;
+  UINT64 cnt;
+  UINT64 total_time;
+
+  time_tracker () : start_tick ({0}), end_tick ({0}), cnt (0), total_time (0)
+    {
+    }
+};
+
 static int prev_ha_server_state = HA_SERVER_STATE_NA;
 static bool logwr_need_shutdown = false;
 
@@ -118,6 +146,9 @@ LOGWR_GLOBAL logwr_Gl = {
   false
 };
 
+time_tracker get_page_tracker;
+time_tracker write_page_tracker;
+
 
 static int logwr_fetch_header_page (LOG_PAGE * log_pgptr, int vol_fd);
 static int logwr_read_log_header (void);
@@ -129,6 +160,39 @@ static int logwr_flush_all_append_pages (void);
 static int logwr_archive_active_log (void);
 static int logwr_flush_bgarv_header_page (void);
 static void logwr_reinit_copylog (void);
+
+static void
+logwr_print_time_trackers (void)
+{
+  char sql_log_err[1024];
+  static time_t prev_time = (time_t) 0;
+  time_t tloc;
+  char str_time[128];
+  struct tm tmloc;
+
+  tloc = time (NULL);
+
+  if (tloc <= prev_time)
+    {
+      return;
+    }
+  prev_time = tloc;
+  localtime_r (&tloc, &tmloc);
+
+  strftime (str_time, sizeof (str_time), "%a %B %d %H:%M:%S %Z %Y", &tmloc);
+    
+  snprintf (sql_log_err, sizeof (sql_log_err),
+            "%s\n"
+            "GET_PAGE_TIMER : %16llu,%16llu\n"
+            "WRITE_PAGE_TIMER : %16llu,%16llu\n",
+            str_time,
+            get_page_tracker.cnt, get_page_tracker.total_time,
+            write_page_tracker.cnt, write_page_tracker.total_time);
+
+  er_stack_push ();
+  er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_HA_GENERIC_ERROR, 1, sql_log_err);
+  er_stack_pop ();
+}
 
 /*
  * logwr_to_physical_pageid -
@@ -1508,7 +1572,13 @@ logwr_copy_log_file (const char *db_name, const char *log_path, int mode, INT64 
 
   while (!ctx.shutdown && !logwr_need_shutdown)
     {
-      if ((error = logwr_get_log_pages (&ctx)) != NO_ERROR)
+      logwr_print_time_trackers ();
+
+      TIMER_START (&get_page_tracker);
+      error = logwr_get_log_pages (&ctx);
+      TIMER_END (&get_page_tracker);
+
+      if (error != NO_ERROR)
 	{
 	  ctx.last_error = error;
 
@@ -1540,7 +1610,9 @@ logwr_copy_log_file (const char *db_name, const char *log_path, int mode, INT64 
 	{
 	  if (logwr_Gl.action & LOGWR_ACTION_ASYNC_WRITE)
 	    {
+              TIMER_START (&write_page_tracker);
 	      error = logwr_write_log_pages ();
+              TIMER_END (&write_page_tracker);
 	      if (error != NO_ERROR)
 		{
 		  ctx.last_error = error;

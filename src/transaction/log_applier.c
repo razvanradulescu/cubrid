@@ -577,6 +577,9 @@ static int check_reinit_copylog (void);
 
 time_tracker process_log_record_timer;
 time_tracker flush_repl_timer;
+time_tracker reinit_timer;
+time_tracker get_log_page_timer;
+time_tracker check_commit_timer;
 
 
 static void
@@ -602,10 +605,16 @@ print_time_trackers (void)
   snprintf (sql_log_err, sizeof (sql_log_err),
             "%s\n"
             "LOG_RECORD_TIMER : %16llu,%16llu\n"
-            "FLUSH_REPL_TIMER : %16llu,%16llu\n",
+            "FLUSH_REPL_TIMER : %16llu,%16llu\n"
+            "REINIT_TIMER : %16llu,%16llu\n"
+            "GET_LOG_PAGE_TIMER : %16llu,%16llu\n"
+            "CHECK_COMMIT_TIMER : %16llu,%16llu\n",
             str_time,
             process_log_record_timer.cnt, process_log_record_timer.total_time,
-            flush_repl_timer.cnt, flush_repl_timer.total_time);
+            flush_repl_timer.cnt, flush_repl_timer.total_time,
+            reinit_timer.cnt, reinit_timer.total_time,
+            get_log_page_timer.cnt, get_log_page_timer.total_time,
+            check_commit_timer.cnt, check_commit_timer.total_time);
 
   er_stack_push ();
   er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_HA_GENERIC_ERROR, 1, sql_log_err);
@@ -7999,7 +8008,9 @@ la_apply_log_file (const char *database_name, const char *log_path, const int ma
 	  /* we should fetch final log page from disk not cache buffer */
 	  la_decache_page_buffers (la_Info.final_lsa.pageid, LOGPAGEID_MAX);
 
+          START_TIMER (&reinit_timer);
 	  error = check_reinit_copylog ();
+          END_TIMER (&reinit_timer);
 	  if (error != NO_ERROR)
 	    {
 	      la_applier_need_shutdown = true;
@@ -8105,7 +8116,9 @@ la_apply_log_file (const char *database_name, const char *log_path, const int ma
 	    }
 
 	  /* get the target page from log */
+          START_TIMER (&get_log_page_timer);
 	  log_buf = la_get_page_buffer (la_Info.final_lsa.pageid);
+          END_TIMER (&get_log_page_timer);
 	  LSA_COPY (&old_lsa, &la_Info.final_lsa);
 
 	  if (log_buf == NULL)
@@ -8323,7 +8336,9 @@ la_apply_log_file (const char *database_name, const char *log_path, const int ma
 	  /* commit */
 	  la_get_adaptive_time_commit_interval (&time_commit_interval, delay_hist);
 
+          START_TIMER (&check_commit_timer);
 	  error = la_check_time_commit (&time_commit, time_commit_interval);
+          END_TIMER (&check_commit_timer);
 	  if (error != NO_ERROR)
 	    {
 	      /* check connection error */
