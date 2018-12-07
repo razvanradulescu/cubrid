@@ -1434,6 +1434,8 @@ logwr_write_log_pages (void)
       logwr_Gl.force_flush = false;
     }
 
+  TIMER_START (&write_page_tracker);
+
   if (logwr_Gl.append_vdes == NULL_VOLDES && !fileio_is_volume_exist (logwr_Gl.active_name))
     {
       /* Create a new active log */
@@ -1443,6 +1445,7 @@ logwr_write_log_pages (void)
       if (logwr_Gl.append_vdes == NULL_VOLDES)
 	{
 	  /* Unable to create an active log */
+          TIMER_END (&write_page_tracker);
 	  return ER_IO_FORMAT_FAIL;
 	}
     }
@@ -1457,6 +1460,7 @@ logwr_write_log_pages (void)
       error = logwr_archive_active_log ();
       if (error != NO_ERROR)
 	{
+          TIMER_END (&write_page_tracker);
 	  return error;
 	}
     }
@@ -1464,12 +1468,15 @@ logwr_write_log_pages (void)
   error = logwr_flush_all_append_pages ();
   if (error != NO_ERROR)
     {
+      TIMER_END (&write_page_tracker);
       return error;
     }
 
   logwr_flush_header_page ();
 
   gettimeofday (&logwr_Gl.last_flush_time, NULL);
+
+  TIMER_END (&write_page_tracker);
 
   return NO_ERROR;
 }
@@ -1610,9 +1617,7 @@ logwr_copy_log_file (const char *db_name, const char *log_path, int mode, INT64 
 	{
 	  if (logwr_Gl.action & LOGWR_ACTION_ASYNC_WRITE)
 	    {
-              TIMER_START (&write_page_tracker);
 	      error = logwr_write_log_pages ();
-              TIMER_END (&write_page_tracker);
 	      if (error != NO_ERROR)
 		{
 		  ctx.last_error = error;
