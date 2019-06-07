@@ -6736,6 +6736,10 @@ log_dump_record (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_RECTYPE record_type
       log_page_p = log_dump_record_transaction_finish (thread_p, out_fp, log_lsa, log_page_p);
       break;
 
+    case LOG_GROUP_COMPLETE:
+      log_page_p = log_dump_record_group_complete (thread_p, out_fp, log_lsa, log_page_p);
+      break;
+
     case LOG_REPLICATION_DATA:
     case LOG_REPLICATION_STATEMENT:
       log_page_p = log_dump_record_replication (thread_p, out_fp, log_lsa, log_page_p);
@@ -6799,7 +6803,7 @@ log_dump_record (THREAD_ENTRY * thread_p, FILE * out_fp, LOG_RECTYPE record_type
     case LOG_SMALLER_LOGREC_TYPE:
     case LOG_LARGER_LOGREC_TYPE:
     default:
-      fprintf (out_fp, "log_dump: Unknown record type = %d (%s).\n", record_type, log_to_string (record_type));
+      fprintf (out_fp, "\n\tlog_dump: Unknown record type = %d (%s).\n", record_type, log_to_string (record_type));
       LSA_SET_NULL (log_lsa);
       break;
     }
