@@ -86,6 +86,7 @@ set(BASE_SOURCES
   ${BASE_DIR}/bit.c
   ${BASE_DIR}/chartype.c
   ${BASE_DIR}/condition_handler.c
+  ${BASE_DIR}/crud.cpp
   ${BASE_DIR}/databases_file.c
   ${BASE_DIR}/dtoa.c
   ${BASE_DIR}/dynamic_array.c	
@@ -134,6 +135,7 @@ set(BASE_SOURCES
   ${BASE_DIR}/xml_parser.c
   )
 set (BASE_HEADERS
+  ${BASE_DIR}/crud.hpp
   ${BASE_DIR}/error_code.h
   ${BASE_DIR}/error_context.hpp
   ${BASE_DIR}/error_manager.h

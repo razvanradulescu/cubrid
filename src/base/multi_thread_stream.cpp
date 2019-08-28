@@ -33,8 +33,13 @@ namespace cubstream
   multi_thread_stream::multi_thread_stream (const size_t buffer_capacity, const int max_appenders)
     : m_bip_buffer (buffer_capacity),
       m_reserved_positions (max_appenders)
+    , m_crud_stream ("stream_name", m_stream_name)
+    , m_crud_append_pos ("append_pos", m_append_position)
+    , m_crud_read_pos ("read_pos", m_read_position)
   {
     m_oldest_readable_position = 0;
+    m_crud_stream.add_child (&m_crud_append_pos);
+    m_crud_stream.add_child (&m_crud_read_pos);
 
     /* TODO : system parameter */
     m_trigger_flush_to_disk_size = buffer_capacity / 2;

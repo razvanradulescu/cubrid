@@ -74,6 +74,7 @@ set(COMPAT_SOURCES_C
 
 set(BASE_SOURCES
   ${BASE_DIR}/bit.c
+  ${BASE_DIR}/crud.cpp
   ${BASE_DIR}/dynamic_array.c
   ${BASE_DIR}/porting.c
   ${BASE_DIR}/area_alloc.c
@@ -129,6 +130,7 @@ set(BASE_SOURCES
   ${BASE_DIR}/tz_support.c
   )
 set(BASE_HEADERS
+  ${BASE_DIR}/crud.hpp
   ${BASE_DIR}/error_code.h
   ${BASE_DIR}/error_context.hpp
   ${BASE_DIR}/error_manager.h

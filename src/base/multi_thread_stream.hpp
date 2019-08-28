@@ -30,11 +30,13 @@
 #include "collapsable_circular_queue.hpp"
 #include "cubstream.hpp"
 #include "stream_io.hpp"
+#include "crud.hpp"
 
 #include <condition_variable>
 #include <mutex>
 #include <functional>
 #include <vector>
+#include <string>
 
 namespace cubstream
 {
@@ -121,6 +123,13 @@ namespace cubstream
       std::uint64_t m_stat_read_not_in_buffer_cnt;
       std::uint64_t m_stat_read_no_readable_pos_cnt;
       std::uint64_t m_stat_read_buffer_failed_cnt;
+
+      std::string m_stream_name;
+      cubcrud::object<std::string> m_crud_stream;
+
+      cubcrud::object<std::uint64_t> m_crud_append_pos;
+      cubcrud::object<std::uint64_t> m_crud_read_pos;
+
 
     protected:
       /* should be called when serialization of a stream entry ends */

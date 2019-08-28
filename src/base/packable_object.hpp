@@ -28,6 +28,9 @@
 
 #include "packer.hpp"
 
+#include <list>
+#include <string>
+
 namespace cubpacking
 {
 
