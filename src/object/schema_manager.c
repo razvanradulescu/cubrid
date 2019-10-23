@@ -11320,6 +11320,9 @@ transfer_disk_structures (MOP classop, SM_CLASS * class_, SM_TEMPLATE * flat)
     }
 
   /* loop over each old constraint */
+  SM_CLASS_CONSTRAINT *saved_class_constraints = class_->constraints;
+  SM_CLASS_CONSTRAINT *saved_con = NULL;
+
   for (con = class_->constraints; ((con != NULL) && (error == NO_ERROR)); con = con->next)
     {
       if (!SM_IS_CONSTRAINT_INDEX_FAMILY (con->type))
@@ -11398,6 +11401,7 @@ transfer_disk_structures (MOP classop, SM_CLASS * class_, SM_TEMPLATE * flat)
 		    {
 		      goto end;
 		    }
+		  saved_con = con;
 		}
 	      else
 		{
