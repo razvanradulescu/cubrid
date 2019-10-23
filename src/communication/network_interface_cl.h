@@ -151,7 +151,7 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
-#endif // ENABLE_UNUSED_FUNCTION
+#endif				// ENABLE_UNUSED_FUNCTION
 
 extern int tran_server_has_updated (void);
 extern int tran_server_is_active_and_has_updated (void);
