@@ -3902,7 +3902,7 @@ sm_update_statistics (MOP classop, bool with_fullscan)
                   if (class_->stats == NULL)
                     {
                       error = er_errid ();
-                      assert (error != NO_ERROR);
+                      /* don't assert error (stats may be empty for class with no attributes) */
                     }
 		}
 	    }
@@ -3960,7 +3960,7 @@ sm_update_all_statistics (bool with_fullscan)
                   if (class_->stats == NULL)
                     {
                       error = er_errid ();
-                      assert (error != NO_ERROR);
+                      /* don't assert error (stats may be empty for class with no attributes) */
                     }
 		}
 	    }
