@@ -11309,6 +11309,7 @@ transfer_disk_structures (MOP classop, SM_CLASS * class_, SM_TEMPLATE * flat)
   int is_global_index = 0;
   SM_CLASS_CONSTRAINT *saved_class_constraints = NULL;
   SM_CLASS_CONSTRAINT *saved_con = NULL;
+  SM_CLASS saved_class_ = *class_;
 
   /* Get the cached constraint info for the flattened template. Sigh, convert the template property list to a transient
    * constraint cache so we have a prayer of dealing with it. */
