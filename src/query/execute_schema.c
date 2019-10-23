@@ -5789,6 +5789,7 @@ do_remove_partition_pre (PARSER_CONTEXT * parser, PT_NODE * alter, SM_PARTITION_
   int error;
   char **names = NULL;
   int names_count = 0, allocated = 0, i = 0;
+  SM_CLASS saved_subclass;
 
   /* sanity checks */
   assert (parser && alter && pinfo);
@@ -5857,6 +5858,7 @@ do_remove_partition_pre (PARSER_CONTEXT * parser, PT_NODE * alter, SM_PARTITION_
 	  goto error_return;
 	}
       names_count++;
+      saved_subclass = *subclass;
       error = do_promote_partition (subclass);
       if (error != NO_ERROR)
 	{
