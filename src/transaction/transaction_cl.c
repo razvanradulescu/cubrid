@@ -58,6 +58,8 @@
 #include "porting.h"
 #include "network_interface_cl.h"
 
+#include "stack_dump.h"
+
 #if defined(WINDOWS)
 #include "wintcp.h"
 #else /* WINDOWS */
@@ -586,6 +588,7 @@ tran_abort_only_client (bool is_server_down)
     }
   else
     {
+      er_dump_call_stack_and_save ();
       er_set (ER_ERROR_SEVERITY, ARG_FILE_LINE, ER_TM_SERVER_DOWN_UNILATERALLY_ABORTED, 0);
       return ER_TM_SERVER_DOWN_UNILATERALLY_ABORTED;
     }

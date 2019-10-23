@@ -514,3 +514,23 @@ er_dump_call_stack_to_string (void)
 
   return ptr;
 }
+
+static int curr_stack = 0;
+static const int MAX_STACKS = 100;
+static char *stacks[MAX_STACKS] = { NULL };
+
+void er_dump_call_stack_and_save (void)
+{
+  char *stack_string = er_dump_call_stack_to_string ();
+
+  stacks[curr_stack++] = stack_string;
+  if (curr_stack >= MAX_STACKS)
+    {
+      curr_stack = 0;
+    }
+  if (stacks[curr_stack] != NULL)
+    {
+      free (stacks[curr_stack]);
+      stacks[curr_stack] = NULL;
+    }
+}

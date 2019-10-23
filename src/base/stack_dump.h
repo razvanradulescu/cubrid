@@ -35,5 +35,6 @@ extern MHT_TABLE *fname_table;
 
 extern void er_dump_call_stack (FILE * outfp);
 extern char *er_dump_call_stack_to_string (void);
+extern void er_dump_call_stack_and_save (void);
 
 #endif /* _STACK_DUMP_H_ */
