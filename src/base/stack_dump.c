@@ -519,7 +519,8 @@ static int curr_stack = 0;
 static const int MAX_STACKS = 100;
 static char *stacks[MAX_STACKS] = { NULL };
 
-void er_dump_call_stack_and_save (void)
+void
+er_dump_call_stack_and_save (void)
 {
   char *stack_string = er_dump_call_stack_to_string ();
 
