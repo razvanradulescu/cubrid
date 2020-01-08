@@ -3080,18 +3080,21 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
   status = us_hb_server_start (ha_conf, db_name);
   if (status != NO_ERROR)
     {
+	  fprintf (stdout, "us_hb_process_start : us_hb_server_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
       goto ret;
     }
 
   status = us_hb_copylogdb_start (pids, ha_conf, db_name, NULL, NULL);
   if (status != NO_ERROR)
     {
+	  fprintf (stdout, "us_hb_process_start : us_hb_copylogdb_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
       goto ret;
     }
 
   status = us_hb_applylogdb_start (pids, ha_conf, db_name, NULL, NULL);
   if (status != NO_ERROR)
     {
+	  fprintf (stdout, "us_hb_process_start : us_hb_applylogdb_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
       goto ret;
     }
 
@@ -3103,6 +3106,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
 	  da_get (pids, i, &pid);
 	  if (is_terminated_process (pid))
 	    {
+		  fprintf (stdout, "us_hb_process_start : is_terminated_process pid : %d, i:%d, sleep :%d\n", pid, i, HB_START_WAITING_TIME_IN_SECS);
 	      status = ER_GENERIC_ERROR;
 	      break;
 	    }
@@ -3789,6 +3793,7 @@ process_heartbeat_start (HA_CONF * ha_conf, int argc, const char **argv)
   status = us_hb_process_start (ha_conf, db_name, true);
   if (status != NO_ERROR)
     {
+	  fprintf (stdout, "process_heartbeat_start : after us_hb_process_start status: %d, db_name:%s\n", status, db_name ? db_name : "NULL");
       if (db_name == NULL)
 	{
 	  (void) us_hb_deactivate (NULL, false);
