@@ -1513,6 +1513,8 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 	  util_service_usage (SERVER);
 	  util_log_write_errid (MSGCAT_UTIL_GENERIC_INVALID_CMD);
 	}
+	  fprintf (stdout, "process_server1 : command_type:%d, strlen (buf):%d\n", command_type,  strlen (buf));
+	  fprintf (stderr, "process_server1 : command_type:%d, strlen (buf):%d\n", command_type,  strlen (buf));
       return ER_GENERIC_ERROR;
     }
 
@@ -1582,6 +1584,9 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 	      status = process_master (command_type);
 	      if (status != NO_ERROR)
 		{
+	  fprintf (stdout, "process_server2 : process_master status:%d\n", status);
+	  fprintf (stderr, "process_server2 : process_master status:%d\n", status);
+			
 		  break;	/* escape switch */
 		}
 	    }
@@ -1603,6 +1608,10 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		    {
 		      util_log_write_errid (MSGCAT_UTIL_GENERIC_SERVICE_PROPERTY_FAIL);
 		      print_result (PRINT_SERVER_NAME, status, command_type);
+			  
+	  fprintf (stdout, "process_server3 : sysprm_load_and_init status:%d\n", status);
+	  fprintf (stderr, "process_server3 : sysprm_load_and_init status:%d\n", status);
+			  
 		      break;
 		    }
 
@@ -1612,6 +1621,9 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		      print_message (stderr, MSGCAT_UTIL_GENERIC_HA_MODE);
 		      print_result (PRINT_SERVER_NAME, status, command_type);
 		      util_log_write_errid (MSGCAT_UTIL_GENERIC_HA_MODE);
+			  
+	  fprintf (stdout, "process_server4 : util_get_ha_mode_for_sa_utils != HA_MODE_OFF\n");
+	  fprintf (stderr, "process_server4 : util_get_ha_mode_for_sa_utils != HA_MODE_OFF\n");
 		      break;
 		    }
 		}
@@ -1622,6 +1634,10 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		  status = ER_GENERIC_ERROR;
 		  print_message (stdout, MSGCAT_UTIL_GENERIC_ALREADY_RUNNING_2S, PRINT_SERVER_NAME, token);
 		  util_log_write_errid (MSGCAT_UTIL_GENERIC_ALREADY_RUNNING_2S, PRINT_SERVER_NAME, token);
+		  
+	  fprintf (stdout, "process_server5 : is_server_running  token: %s\n", token);
+	  fprintf (stderr, "process_server5 : is_server_running  token: %s\n", token);
+	  
 		  continue;
 		}
 	      else
@@ -1632,6 +1648,9 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 
 		  if (status == NO_ERROR && !is_server_running (CHECK_SERVER, token, pid))
 		    {
+	  fprintf (stdout, "process_server6 : status :%d , is_server_running  token: %s, pid:%d\n", status, token, pid);
+	  fprintf (stderr, "process_server6 : status :%d , is_server_running  token: %s, pid:%d\n", status, token, pid);
+	  
 		      status = ER_GENERIC_ERROR;
 		    }
 		  print_result (PRINT_SERVER_NAME, status, command_type);
@@ -1672,6 +1691,10 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		      if (status != NO_ERROR)
 			{
 			  print_result (PRINT_SERVER_NAME, status, command_type);
+
+	  fprintf (stdout, "process_server7 : status :%d \n", status);
+	  fprintf (stderr, "process_server7 : status :%d \n", status);
+	  
 			  break;
 			}
 
@@ -1681,6 +1704,10 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 			  print_message (stderr, MSGCAT_UTIL_GENERIC_HA_MODE);
 			  util_log_write_errid (MSGCAT_UTIL_GENERIC_HA_MODE);
 			  print_result (PRINT_SERVER_NAME, status, command_type);
+			  
+	  fprintf (stdout, "process_server8 : util_get_ha_mode_for_sa_utils () != HA_MODE_OFF \n");
+	  fprintf (stderr, "process_server8 : util_get_ha_mode_for_sa_utils () != HA_MODE_OFF \n");
+	  
 			  break;
 			}
 		    }
@@ -1694,6 +1721,11 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 	      status = ER_GENERIC_ERROR;
 	      print_message (stdout, MSGCAT_UTIL_GENERIC_NOT_RUNNING_2S, PRINT_SERVER_NAME, token);
 	      util_log_write_errid (MSGCAT_UTIL_GENERIC_NOT_RUNNING_2S, PRINT_SERVER_NAME, token);
+		  
+	  fprintf (stdout, "process_server9 \n");
+	  fprintf (stderr, "process_server9 \n");
+	  
+	  
 	    }
 	}
       break;
@@ -1724,6 +1756,10 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		util_service_usage (SERVER);
 		util_log_write_errid (MSGCAT_UTIL_GENERIC_INVALID_CMD);
 	      }
+		  
+	  fprintf (stdout, "process_server10 argc:%d \n", argc);
+	  fprintf (stderr, "process_server10 argc:%d \n", argc);
+		  
 	    break;
 	  }
 
@@ -1735,12 +1771,18 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 
 	    status = proc_execute (UTIL_ADMIN_NAME, args, true, false, false, NULL);
 	    print_result (PRINT_SERVER_NAME, status, command_type);
+		
+	  fprintf (stdout, "process_server11 status:%d \n", status);
+	  fprintf (stderr, "process_server11 status:%d \n", status);		
 	  }
 	else if (strcasecmp (argv[0], "status") == 0)
 	  {
 	    const char *args[] = { UTIL_ADMIN_NAME, UTIL_OPTION_ACLDB, argv[1], NULL };
 
 	    status = proc_execute (UTIL_ADMIN_NAME, args, true, false, false, NULL);
+		
+	  fprintf (stdout, "process_server12 status:%d \n", status);
+	  fprintf (stderr, "process_server12 status:%d \n", status);				
 	  }
 	else
 	  {
@@ -1750,6 +1792,9 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		util_service_usage (SERVER);
 		util_log_write_errid (MSGCAT_UTIL_GENERIC_INVALID_CMD);
 	      }
+		  
+	  fprintf (stdout, "process_server13 argv[0]:%d \n", argv[0] ? argv[0] : "NULL");
+	  fprintf (stderr, "process_server13 argv[0]:%d \n", argv[0] ? argv[0] : "NULL");
 
 	    break;
 	  }
