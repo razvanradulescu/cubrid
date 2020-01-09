@@ -4535,6 +4535,8 @@ is_terminated_process (const int pid)
 #else /* WINDOWS */
   if (kill (pid, 0) == -1)
     {
+	  fprintf (stdout, "is_terminated_process errno :%d\n", errno );
+	  fprintf (stderr, "is_terminated_process errno :%d\n", errno );
       return true;
     }
   else
