@@ -3148,7 +3148,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
   int pid;
   dynamic_array *pids = NULL;
 
-  util_log_write_errstr ("us_hb_process_start"\n");
+  util_log_write_errstr ("us_hb_process_start\n");
 
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HA_PROCS_NAME, PRINT_CMD_START);
 
@@ -3184,7 +3184,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
     }
 
   sleep (HB_START_WAITING_TIME_IN_SECS);
-  util_log_write_errstr ("Checking copylogdb & applylogdb\n")
+  util_log_write_errstr ("Checking copylogdb & applylogdb\n");
   if (check_result == true)
     {
       for (i = 0; i < da_size (pids); i++)
