@@ -864,7 +864,7 @@ proc_execute_internal (const char *file, const char *args[], bool wait_child, bo
     }
   else if (pid == 0)
     {
-      util_log_write_errstr (" ++ after fork in child process ");
+      util_log_write_errstr (" ++ after fork in child process \n");
       /* a child process handle SIGCHLD to SIG_DFL */
       signal (SIGCHLD, SIG_DFL);
       if (close_output)
@@ -2495,6 +2495,7 @@ us_hb_copylogdb_start (dynamic_array * out_ap, HA_CONF * ha_conf, const char *db
   dbs = ha_conf->db_names;
   nc = ha_conf->node_conf;
 
+  util_log_write_errstr ("us_hb_copylogdb_start node_name :%s, remote_host:%s\n", node_name, remote_host);
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, UTIL_COPYLOGDB, PRINT_CMD_START);
 
   for (i = 0; dbs[i] != NULL; i++)
@@ -2636,6 +2637,8 @@ us_hb_copylogdb_stop (HA_CONF * ha_conf, const char *db_name, const char *node_n
 
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, UTIL_COPYLOGDB, PRINT_CMD_STOP);
 
+  util_log_write_errstr ("us_hb_copylogdb_stop node_name:%s, remote_host :%s\n ", node_name, remote_host);
+
   for (i = 0; dbs[i] != NULL; i++)
     {
       if (db_name != NULL && strcmp (dbs[i], db_name) != 0)
@@ -2766,6 +2769,7 @@ us_hb_applylogdb_start (dynamic_array * out_ap, HA_CONF * ha_conf, const char *d
   nc = ha_conf->node_conf;
 
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, UTIL_APPLYLOGDB, PRINT_CMD_START);
+  util_log_write_errstr ("us_hb_applylogdb_start node_name:%s, remote_host:%s\n", node_name, remote_host);
 
   for (i = 0; dbs[i] != NULL; i++)
     {
@@ -2900,6 +2904,8 @@ us_hb_applylogdb_stop (HA_CONF * ha_conf, const char *db_name, const char *node_
   num_nodes = ha_conf->num_node_conf;
   dbs = ha_conf->db_names;
   nc = ha_conf->node_conf;
+
+  util_log_write_errstr ("us_hb_applylogdb_stop node_name:%s, remote_host :%s\n ", node_name, remote_host);
 
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, UTIL_APPLYLOGDB, PRINT_CMD_STOP);
 
@@ -3056,6 +3062,7 @@ us_hb_server_start (HA_CONF * ha_conf, const char *db_name)
   int i, num_db_found = 0;
   char **dbs;
 
+  util_log_write_errstr ("us_hb_server_start\n");
   dbs = ha_conf->db_names;
   for (i = 0; dbs[i] != NULL; i++)
     {
@@ -3096,6 +3103,8 @@ us_hb_server_stop (HA_CONF * ha_conf, const char *db_name)
   int status = NO_ERROR;
   int i, num_db_found = 0;
   char **dbs;
+
+  util_log_write_errstr ("us_hb_server_stop\n");
 
   dbs = ha_conf->db_names;
   for (i = 0; dbs[i] != NULL; i++)
@@ -3139,6 +3148,8 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
   int pid;
   dynamic_array *pids = NULL;
 
+  util_log_write_errstr ("us_hb_process_start"\n");
+
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HA_PROCS_NAME, PRINT_CMD_START);
 
   pids = da_create (100, sizeof (int));
@@ -3173,6 +3184,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
     }
 
   sleep (HB_START_WAITING_TIME_IN_SECS);
+  util_log_write_errstr ("Checking copylogdb & applylogdb\n")
   if (check_result == true)
     {
       for (i = 0; i < da_size (pids); i++)
@@ -3187,6 +3199,8 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
 	    }
 	}
     }
+
+  util_log_write_errstr ("Checking copylogdb & applylogdb   : %s\n", status == NO_ERROR ? "OK" : "FAILED");
 
 ret:
   if (pids)
@@ -3215,6 +3229,8 @@ us_hb_deactivate (const char *hostname, bool immediate_stop)
     UTIL_COMMDB_NAME, NULL, NULL, NULL, NULL, NULL
   };
 
+  util_log_write_errstr ("us_hb_deactivate immediate_stop:%d\n", immediate_stop);
+
   if (hostname != NULL && hostname[0] != '\0')
     {
       args[opt_idx++] = COMMDB_HOST;
@@ -3225,7 +3241,7 @@ us_hb_deactivate (const char *hostname, bool immediate_stop)
     {
       args[opt_idx++] = COMMDB_HB_DEACT_IMMEDIATELY;
     }
-
+  
   /* stop all HA processes including cub_server */
   args[opt_idx] = COMMDB_HA_DEACT_STOP_ALL;
   status = proc_execute (UTIL_COMMDB_NAME, args, true, false, false, NULL);
@@ -3272,6 +3288,7 @@ us_hb_process_stop (HA_CONF * ha_conf, const char *db_name)
 {
   int status = NO_ERROR;
 
+  util_log_write_errstr ("us_hb_process_stop\n");
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HA_PROCS_NAME, PRINT_CMD_STOP);
 
   status = us_hb_copylogdb_stop (ha_conf, db_name, NULL, NULL);
@@ -3820,6 +3837,7 @@ process_heartbeat_start (HA_CONF * ha_conf, int argc, const char **argv)
   int master_port;
   const char *db_name = NULL;
 
+  util_log_write_errstr ("process_heartbeat_start\n");
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HEARTBEAT_NAME, PRINT_CMD_START);
 
   master_port = prm_get_master_port_id ();
@@ -3903,6 +3921,7 @@ process_heartbeat_stop (HA_CONF * ha_conf, int argc, const char **argv)
   char remote_host_name[CUB_MAXHOSTNAMELEN] = "";
   bool immediate_stop = false;
 
+  util_log_write_errstr ("process_heartbeat_stop");
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HEARTBEAT_NAME, PRINT_CMD_STOP);
 
   status =
