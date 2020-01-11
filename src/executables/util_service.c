@@ -852,19 +852,25 @@ proc_execute_internal (const char *file, const char *args[], bool wait_child, bo
       signal (SIGCHLD, SIG_IGN);
     }
 
-  util_log_write_errstr (" ++ before fork in parent process, wait_child:%d\n", wait_child);
+  util_log_write_str (" ++ before fork in parent process, file:%s, args: [%s %s %s %s], wait_child:%d\n", 
+    file, 
+    args[0] ? args[0] : "NULL", 
+    args[1] ? args[1] : "NULL", 
+    args[2] ? args[2] : "NULL", 
+    args[3] ? args[3] : "NULL", 
+    wait_child);
   pid = fork ();
   if (pid == -1)
     {
       perror ("fork");
-      util_log_write_errstr ( "fork returned -1\n");
+      util_log_write_str ( "fork returned -1\n");
       fprintf (stdout, "fork returned -1\n");
       fprintf (stderr, "fork returned -1\n");
       return ER_GENERIC_ERROR;
     }
   else if (pid == 0)
     {
-      util_log_write_errstr (" ++ after fork in child process \n");
+      util_log_write_str (" ++ after fork in child process \n");
       /* a child process handle SIGCHLD to SIG_DFL */
       signal (SIGCHLD, SIG_DFL);
       if (close_output)
@@ -880,6 +886,7 @@ proc_execute_internal (const char *file, const char *args[], bool wait_child, bo
       if (execv (executable_path, (char *const *) args) == -1)
 	{
 	  perror ("execv");
+          util_log_write_str (" error  execv returned -1 \n");
           fprintf (stdout, "execv returned -1\n");
           fprintf (stderr, "execv returned -1\n");
 
@@ -890,7 +897,7 @@ proc_execute_internal (const char *file, const char *args[], bool wait_child, bo
     {
       int status = 0;
 
-      util_log_write_errstr (" ++ after fork in parent process child:%d\n", pid);
+      util_log_write_str (" ++ after fork in parent process child:%d\n", pid);
 
       if (hide_cmd_args == true)
 	{
@@ -1396,9 +1403,12 @@ check_server (const char *type, const char *server_name)
   char cmd[PATH_MAX];
 
   make_exec_abspath (cmd, PATH_MAX, (char *) UTIL_COMMDB_NAME " " COMMDB_ALL_STATUS);
+  util_log_write_str ("check_server: type:%s, server_name:%s cmd:%s\n", type, server_name, cmd);
+
   input = popen (cmd, "r");
   if (input == NULL)
     {
+      util_log_write_str ("  ++ check_server: popen==NULL, errno:%d \n", errno);
       return false;
     }
 
@@ -1429,10 +1439,12 @@ check_server (const char *type, const char *server_name)
       if (token != NULL && strcmp (token, server_name) == 0)
 	{
 	  pclose (input);
+          util_log_write_str ("  ++ check_server: return true \n");
 	  return true;
 	}
     }
   pclose (input);
+  util_log_write_str ("  ++ check_server: return false \n");
   return false;
 }
 
@@ -1448,8 +1460,11 @@ check_server (const char *type, const char *server_name)
 static bool
 is_server_running (const char *type, const char *server_name, int pid)
 {
+  util_log_write_str ("is_server_running: type:%s, server_name:%s, pid:%d\n", type, server_name, pid);
+
   if (!css_does_master_exist (prm_get_master_port_id ()))
     {
+      util_log_write_str (" ++ is_server_running: css_does_master_exist==false\n");
       return false;
     }
 
@@ -1474,6 +1489,7 @@ is_server_running (const char *type, const char *server_name, int pid)
 	}
       else
 	{
+          util_log_write_str (" ++ is_server_running: return false\n");
 	  return false;
 	}
     }
@@ -1523,7 +1539,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 	  util_service_usage (SERVER);
 	  util_log_write_errid (MSGCAT_UTIL_GENERIC_INVALID_CMD);
 	}
-        util_log_write_errstr ("process_server1 : command_type:%d, strlen (buf):%d\n", command_type,  strlen (buf));
+        util_log_write_str ("process_server1 : command_type:%d, strlen (buf):%d\n", command_type,  strlen (buf));
 	  fprintf (stdout, "process_server1 : command_type:%d, strlen (buf):%d\n", command_type,  strlen (buf));
 	  fprintf (stderr, "process_server1 : command_type:%d, strlen (buf):%d\n", command_type,  strlen (buf));
       return ER_GENERIC_ERROR;
@@ -1595,7 +1611,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 	      status = process_master (command_type);
 	      if (status != NO_ERROR)
 		{
-                util_log_write_errstr ("process_server2 : process_master status:%d\n", status);
+                util_log_write_str ("process_server2 : process_master status:%d\n", status);
 	  fprintf (stdout, "process_server2 : process_master status:%d\n", status);
 	  fprintf (stderr, "process_server2 : process_master status:%d\n", status);
 			
@@ -1621,7 +1637,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		      util_log_write_errid (MSGCAT_UTIL_GENERIC_SERVICE_PROPERTY_FAIL);
 		      print_result (PRINT_SERVER_NAME, status, command_type);
 			  
-           util_log_write_errstr ("process_server3 : sysprm_load_and_init status:%d\n", status);
+           util_log_write_str ("process_server3 : sysprm_load_and_init status:%d\n", status);
 	  fprintf (stdout, "process_server3 : sysprm_load_and_init status:%d\n", status);
 	  fprintf (stderr, "process_server3 : sysprm_load_and_init status:%d\n", status);
 			  
@@ -1635,7 +1651,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		      print_result (PRINT_SERVER_NAME, status, command_type);
 		      util_log_write_errid (MSGCAT_UTIL_GENERIC_HA_MODE);
 			  
-	  util_log_write_errstr ("process_server4 : util_get_ha_mode_for_sa_utils != HA_MODE_OFF\n");
+	  util_log_write_str ("process_server4 : util_get_ha_mode_for_sa_utils != HA_MODE_OFF\n");
           fprintf (stdout, "process_server4 : util_get_ha_mode_for_sa_utils != HA_MODE_OFF\n");
 	  fprintf (stderr, "process_server4 : util_get_ha_mode_for_sa_utils != HA_MODE_OFF\n");
 		      break;
@@ -1649,7 +1665,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		  print_message (stdout, MSGCAT_UTIL_GENERIC_ALREADY_RUNNING_2S, PRINT_SERVER_NAME, token);
 		  util_log_write_errid (MSGCAT_UTIL_GENERIC_ALREADY_RUNNING_2S, PRINT_SERVER_NAME, token);
 		  
-	  util_log_write_errstr ("process_server5 : is_server_running  token: %s\n", token);
+	  util_log_write_str ("process_server5 : is_server_running  token: %s\n", token);
           fprintf (stdout, "process_server5 : is_server_running  token: %s\n", token);
 	  fprintf (stderr, "process_server5 : is_server_running  token: %s\n", token);
 	  
@@ -1664,7 +1680,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		  if (status == NO_ERROR && !is_server_running (CHECK_SERVER, token, pid))
 		    {
 
-                    util_log_write_errstr ("process_server6 : status :%d , is_server_running  token: %s, pid:%d\n", status, token, pid);
+                    util_log_write_str ("process_server6 : status :%d , is_server_running == false,  token: %s, pid:%d\n", status, token, pid);
 	  fprintf (stdout, "process_server6 : status :%d , is_server_running  token: %s, pid:%d\n", status, token, pid);
 	  fprintf (stderr, "process_server6 : status :%d , is_server_running  token: %s, pid:%d\n", status, token, pid);
 	  
@@ -1709,7 +1725,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 			{
 			  print_result (PRINT_SERVER_NAME, status, command_type);
 
-          util_log_write_errstr ("process_server7 : status :%d \n", status);
+          util_log_write_str ("process_server7 : status :%d \n", status);
 	  fprintf (stdout, "process_server7 : status :%d \n", status);
 	  fprintf (stderr, "process_server7 : status :%d \n", status);
 	  
@@ -1723,7 +1739,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 			  util_log_write_errid (MSGCAT_UTIL_GENERIC_HA_MODE);
 			  print_result (PRINT_SERVER_NAME, status, command_type);
 			  
-	  util_log_write_errstr ("process_server8 : util_get_ha_mode_for_sa_utils () != HA_MODE_OFF \n");
+	  util_log_write_str ("process_server8 : util_get_ha_mode_for_sa_utils () != HA_MODE_OFF \n");
           fprintf (stdout, "process_server8 : util_get_ha_mode_for_sa_utils () != HA_MODE_OFF \n");
 	  fprintf (stderr, "process_server8 : util_get_ha_mode_for_sa_utils () != HA_MODE_OFF \n");
 	  
@@ -1741,7 +1757,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 	      print_message (stdout, MSGCAT_UTIL_GENERIC_NOT_RUNNING_2S, PRINT_SERVER_NAME, token);
 	      util_log_write_errid (MSGCAT_UTIL_GENERIC_NOT_RUNNING_2S, PRINT_SERVER_NAME, token);
 		  
-        util_log_write_errstr ( "process_server9 \n");
+        util_log_write_str ( "process_server9 \n");
 	  fprintf (stdout, "process_server9 \n");
 	  fprintf (stderr, "process_server9 \n");
 	  
@@ -1777,7 +1793,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		util_log_write_errid (MSGCAT_UTIL_GENERIC_INVALID_CMD);
 	      }
 		  
-          util_log_write_errstr ("process_server10 argc:%d \n", argc);
+          util_log_write_str ("process_server10 argc:%d \n", argc);
 	  fprintf (stdout, "process_server10 argc:%d \n", argc);
 	  fprintf (stderr, "process_server10 argc:%d \n", argc);
 		  
@@ -1794,7 +1810,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 	    print_result (PRINT_SERVER_NAME, status, command_type);
 		
 
-	  util_log_write_errstr ("process_server11 status:%d \n", status);
+	  util_log_write_str ("process_server11 status:%d \n", status);
           fprintf (stdout, "process_server11 status:%d \n", status);
 	  fprintf (stderr, "process_server11 status:%d \n", status);		
 	  }
@@ -1805,7 +1821,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 	    status = proc_execute (UTIL_ADMIN_NAME, args, true, false, false, NULL);
 		
 
-	  util_log_write_errstr ("process_server12 status:%d \n", status);
+	  util_log_write_str ("process_server12 status:%d \n", status);
           fprintf (stdout, "process_server12 status:%d \n", status);
 	  fprintf (stderr, "process_server12 status:%d \n", status);				
 	  }
@@ -1818,7 +1834,7 @@ process_server (int command_type, int argc, char **argv, bool show_usage, bool c
 		util_log_write_errid (MSGCAT_UTIL_GENERIC_INVALID_CMD);
 	      }
 		  
-	  util_log_write_errstr ("process_server13 argv[0]:%d \n", argv[0] ? argv[0] : "NULL");
+	  util_log_write_str ("process_server13 argv[0]:%d \n", argv[0] ? argv[0] : "NULL");
           fprintf (stdout, "process_server13 argv[0]:%d \n", argv[0] ? argv[0] : "NULL");
 	  fprintf (stderr, "process_server13 argv[0]:%d \n", argv[0] ? argv[0] : "NULL");
 
@@ -2495,7 +2511,7 @@ us_hb_copylogdb_start (dynamic_array * out_ap, HA_CONF * ha_conf, const char *db
   dbs = ha_conf->db_names;
   nc = ha_conf->node_conf;
 
-  util_log_write_errstr ("us_hb_copylogdb_start node_name :%s, remote_host:%s\n", node_name, remote_host);
+  util_log_write_str ("us_hb_copylogdb_start node_name :%s, remote_host:%s\n", node_name, remote_host);
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, UTIL_COPYLOGDB, PRINT_CMD_START);
 
   for (i = 0; dbs[i] != NULL; i++)
@@ -2637,7 +2653,7 @@ us_hb_copylogdb_stop (HA_CONF * ha_conf, const char *db_name, const char *node_n
 
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, UTIL_COPYLOGDB, PRINT_CMD_STOP);
 
-  util_log_write_errstr ("us_hb_copylogdb_stop node_name:%s, remote_host :%s\n ", node_name, remote_host);
+  util_log_write_str ("us_hb_copylogdb_stop node_name:%s, remote_host :%s\n ", node_name, remote_host);
 
   for (i = 0; dbs[i] != NULL; i++)
     {
@@ -2769,7 +2785,7 @@ us_hb_applylogdb_start (dynamic_array * out_ap, HA_CONF * ha_conf, const char *d
   nc = ha_conf->node_conf;
 
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, UTIL_APPLYLOGDB, PRINT_CMD_START);
-  util_log_write_errstr ("us_hb_applylogdb_start node_name:%s, remote_host:%s\n", node_name, remote_host);
+  util_log_write_str ("us_hb_applylogdb_start node_name:%s, remote_host:%s\n", node_name, remote_host);
 
   for (i = 0; dbs[i] != NULL; i++)
     {
@@ -2905,7 +2921,7 @@ us_hb_applylogdb_stop (HA_CONF * ha_conf, const char *db_name, const char *node_
   dbs = ha_conf->db_names;
   nc = ha_conf->node_conf;
 
-  util_log_write_errstr ("us_hb_applylogdb_stop node_name:%s, remote_host :%s\n ", node_name, remote_host);
+  util_log_write_str ("us_hb_applylogdb_stop node_name:%s, remote_host :%s\n ", node_name, remote_host);
 
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, UTIL_APPLYLOGDB, PRINT_CMD_STOP);
 
@@ -3062,7 +3078,7 @@ us_hb_server_start (HA_CONF * ha_conf, const char *db_name)
   int i, num_db_found = 0;
   char **dbs;
 
-  util_log_write_errstr ("us_hb_server_start\n");
+  util_log_write_str ("us_hb_server_start\n");
   dbs = ha_conf->db_names;
   for (i = 0; dbs[i] != NULL; i++)
     {
@@ -3104,7 +3120,7 @@ us_hb_server_stop (HA_CONF * ha_conf, const char *db_name)
   int i, num_db_found = 0;
   char **dbs;
 
-  util_log_write_errstr ("us_hb_server_stop\n");
+  util_log_write_str ("us_hb_server_stop\n");
 
   dbs = ha_conf->db_names;
   for (i = 0; dbs[i] != NULL; i++)
@@ -3148,7 +3164,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
   int pid;
   dynamic_array *pids = NULL;
 
-  util_log_write_errstr ("us_hb_process_start\n");
+  util_log_write_str ("us_hb_process_start\n");
 
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HA_PROCS_NAME, PRINT_CMD_START);
 
@@ -3162,7 +3178,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
   status = us_hb_server_start (ha_conf, db_name);
   if (status != NO_ERROR)
     {
-      util_log_write_errstr ("us_hb_process_start : us_hb_server_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
+      util_log_write_str ("us_hb_process_start : us_hb_server_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
 	  fprintf (stdout, "us_hb_process_start : us_hb_server_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
       goto ret;
     }
@@ -3170,7 +3186,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
   status = us_hb_copylogdb_start (pids, ha_conf, db_name, NULL, NULL);
   if (status != NO_ERROR)
     {
-      util_log_write_errstr ("us_hb_process_start : us_hb_copylogdb_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
+      util_log_write_str ("us_hb_process_start : us_hb_copylogdb_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
 	  fprintf (stdout, "us_hb_process_start : us_hb_copylogdb_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
       goto ret;
     }
@@ -3178,13 +3194,13 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
   status = us_hb_applylogdb_start (pids, ha_conf, db_name, NULL, NULL);
   if (status != NO_ERROR)
     {   
-          util_log_write_errstr ("us_hb_process_start : us_hb_applylogdb_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
+          util_log_write_str ("us_hb_process_start : us_hb_applylogdb_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
 	  fprintf (stdout, "us_hb_process_start : us_hb_applylogdb_start status : %d, db_name:%s\n", status, db_name ? db_name : "NULL");
       goto ret;
     }
 
   sleep (HB_START_WAITING_TIME_IN_SECS);
-  util_log_write_errstr ("Checking copylogdb & applylogdb\n");
+  util_log_write_str ("Checking copylogdb & applylogdb\n");
   if (check_result == true)
     {
       for (i = 0; i < da_size (pids); i++)
@@ -3192,7 +3208,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
 	  da_get (pids, i, &pid);
 	  if (is_terminated_process (pid))
 	    {
-              util_log_write_errstr ( "us_hb_process_start : is_terminated_process pid : %d, i:%d, sleep :%d\n", pid, i, HB_START_WAITING_TIME_IN_SECS);
+              util_log_write_str ( "us_hb_process_start : is_terminated_process pid : %d, i:%d, sleep :%d\n", pid, i, HB_START_WAITING_TIME_IN_SECS);
 		  fprintf (stdout, "us_hb_process_start : is_terminated_process pid : %d, i:%d, sleep :%d\n", pid, i, HB_START_WAITING_TIME_IN_SECS);
 	      status = ER_GENERIC_ERROR;
 	      break;
@@ -3200,7 +3216,7 @@ us_hb_process_start (HA_CONF * ha_conf, const char *db_name, bool check_result)
 	}
     }
 
-  util_log_write_errstr ("Checking copylogdb & applylogdb   : %s\n", status == NO_ERROR ? "OK" : "FAILED");
+  util_log_write_str ("Checking copylogdb & applylogdb   : %s\n", status == NO_ERROR ? "OK" : "FAILED");
 
 ret:
   if (pids)
@@ -3229,7 +3245,7 @@ us_hb_deactivate (const char *hostname, bool immediate_stop)
     UTIL_COMMDB_NAME, NULL, NULL, NULL, NULL, NULL
   };
 
-  util_log_write_errstr ("us_hb_deactivate immediate_stop:%d\n", immediate_stop);
+  util_log_write_str ("us_hb_deactivate hostname:%s, immediate_stop:%d\n", hostname, immediate_stop);
 
   if (hostname != NULL && hostname[0] != '\0')
     {
@@ -3288,7 +3304,7 @@ us_hb_process_stop (HA_CONF * ha_conf, const char *db_name)
 {
   int status = NO_ERROR;
 
-  util_log_write_errstr ("us_hb_process_stop\n");
+  util_log_write_str ("us_hb_process_stop\n");
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HA_PROCS_NAME, PRINT_CMD_STOP);
 
   status = us_hb_copylogdb_stop (ha_conf, db_name, NULL, NULL);
@@ -3837,7 +3853,7 @@ process_heartbeat_start (HA_CONF * ha_conf, int argc, const char **argv)
   int master_port;
   const char *db_name = NULL;
 
-  util_log_write_errstr ("process_heartbeat_start\n");
+  util_log_write_str ("process_heartbeat_start\n");
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HEARTBEAT_NAME, PRINT_CMD_START);
 
   master_port = prm_get_master_port_id ();
@@ -3921,7 +3937,7 @@ process_heartbeat_stop (HA_CONF * ha_conf, int argc, const char **argv)
   char remote_host_name[CUB_MAXHOSTNAMELEN] = "";
   bool immediate_stop = false;
 
-  util_log_write_errstr ("process_heartbeat_stop");
+  util_log_write_str ("process_heartbeat_stop");
   print_message (stdout, MSGCAT_UTIL_GENERIC_START_STOP_2S, PRINT_HEARTBEAT_NAME, PRINT_CMD_STOP);
 
   status =
@@ -4584,7 +4600,7 @@ is_terminated_process (const int pid)
 #else /* WINDOWS */
   if (kill (pid, 0) == -1)
     {
-          util_log_write_errstr ("is_terminated_process pid:%d errno :%d\n", pid, errno);
+          util_log_write_str ("is_terminated_process pid:%d errno :%d\n", pid, errno);
 	  fprintf (stdout, "is_terminated_process errno :%d\n", errno );
 	  fprintf (stderr, "is_terminated_process errno :%d\n", errno );
       return true;

@@ -498,6 +498,24 @@ util_log_write_errstr (const char *format, ...)
   return util_log_write_internal (msg_buf, "FAILURE: ");
 }
 
+int
+util_log_write_str (const char *format, ...)
+{
+  int n;
+  char msg_buf[UTIL_LOG_MAX_MSG_SIZE];
+  va_list arg_list;
+
+  va_start (arg_list, format);
+  n = vsnprintf (msg_buf, UTIL_LOG_MAX_MSG_SIZE, format, arg_list);
+  if (n >= UTIL_LOG_MAX_MSG_SIZE)
+    {
+      msg_buf[UTIL_LOG_MAX_MSG_SIZE - 1] = '\0';
+    }
+  va_end (arg_list);
+
+  return util_log_write_internal (msg_buf, " DBG: ");
+}
+
 /*
  * util_log_write_command () -
  *
