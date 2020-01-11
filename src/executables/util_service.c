@@ -852,12 +852,10 @@ proc_execute_internal (const char *file, const char *args[], bool wait_child, bo
       signal (SIGCHLD, SIG_IGN);
     }
 
-  util_log_write_str (" ++ before fork in parent process, file:%s, args: [%s %s %s %s], wait_child:%d\n", 
+  util_log_write_str (" ++ before fork in parent process, file:%s, args: [%s %s], wait_child:%d\n", 
     file, 
     args[0] ? args[0] : "NULL", 
     args[1] ? args[1] : "NULL", 
-    args[2] ? args[2] : "NULL", 
-    args[3] ? args[3] : "NULL", 
     wait_child);
   pid = fork ();
   if (pid == -1)
