@@ -65,9 +65,9 @@
 
 #define MASTER_ER_LOG_DEBUG(...) \
   do { \
-      if (css_Master_er_log_enabled == true) { \
+      if (1) { \
       pthread_mutex_lock (&css_Master_er_log_lock); \
-      er_log_debug (__VA_ARGS__); \
+      _er_log_debug (__VA_ARGS__); \
       pthread_mutex_unlock (&css_Master_er_log_lock); \
       } \
   } while (0)

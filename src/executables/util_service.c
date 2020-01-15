@@ -1473,13 +1473,14 @@ is_server_running (const char *type, const char *server_name, int pid)
 
   while (true)
     {
+      sleep (100);
       if (!is_terminated_process (pid))
 	{
 	  if (check_server (type, server_name))
 	    {
 	      return true;
 	    }
-	  sleep (1);
+
 
 	  /* A child process is defunct because the SIGCHLD signal ignores. */
 	  /*
