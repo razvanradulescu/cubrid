@@ -149,9 +149,15 @@ send_request_no_args (CSS_CONN_ENTRY * conn, int command)
   unsigned short request_id;
 
   if (css_send_request (conn, command, &request_id, NULL, 0) == NO_ERRORS)
-    return (request_id);
+    {
+      util_log_write_str ("       ++ COMMDB : send_request_no_args: command:%d, request_id:%hd\n", command, request_id);
+      return (request_id);
+    }
   else
-    return (0);
+    {
+      util_log_write_str ("       ++ COMMDB : send_request_no_args: command:%d, FAILED\n", command);
+      return (0);
+    }
 }
 
 /*
@@ -168,9 +174,16 @@ send_request_one_arg (CSS_CONN_ENTRY * conn, int command, char *buffer, int size
   unsigned short request_id;
 
   if (css_send_request (conn, command, &request_id, buffer, size) == NO_ERRORS)
+  {
+    util_log_write_str ("       ++ COMMDB : send_request_one_arg: command:%d, request_id:%hd\n", command, request_id);
+
     return (request_id);
+    }
   else
+  {
+   util_log_write_str ("       ++ COMMDB : send_request_one_arg: command:%d, FAILED\n", command);
     return (0);
+    }
 }
 
 /*
@@ -190,7 +203,12 @@ send_request_two_args (CSS_CONN_ENTRY * conn, int command, char *buffer1, int si
 
   if (css_send_request (conn, command, &request_id, buffer1, size1) == NO_ERRORS)
     if (css_send_data (conn, request_id, buffer2, size2) == NO_ERRORS)
+    {
+      util_log_write_str ("       ++ COMMDB : send_request_two_args: command:%d, request_id:%hd\n", command, request_id);
       return (request_id);
+    }
+
+ util_log_write_str ("       ++ COMMDB : send_request_two_args: command:%d, FAILED\n", command); 
   return (0);
 }
 
@@ -353,6 +371,7 @@ process_status_query (CSS_CONN_ENTRY * conn, int server_type, char **server_info
       break;
     }
 
+   util_log_write_str ("       ++ COMMDB : process_status_query: rid1-4:%hd, %hd, %hd, %hd\n", rid1, rid2, rid3, rid4);
   /* check for errors on the read */
   if (!rid1 || !rid2 || !rid3 || !rid4)
     return;
@@ -360,6 +379,8 @@ process_status_query (CSS_CONN_ENTRY * conn, int server_type, char **server_info
   return_string (conn, rid1, &buffer1, &buffer_size);
   requests_serviced = return_integer_data (conn, rid2);
   server_count = return_integer_data (conn, rid3);
+
+  util_log_write_str ("       ++ COMMDB : process_status_query: server_count:%d, requests_serviced:%d\n", server_count, requests_serviced);
 
   if (server_count)
     {
@@ -1388,6 +1409,7 @@ main (int argc, char **argv)
       goto error;
     }
 
+  util_log_write_str (" ++COMMDB:  hostname:%s, port_id:%d\n", hostname ? hostname : "NULL", port_id);
   conn = css_connect_to_master_for_info (hostname, port_id, &rid);
   if (conn == NULL)
     {

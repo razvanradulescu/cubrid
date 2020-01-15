@@ -1864,6 +1864,9 @@ css_process_info_request (CSS_CONN_ENTRY * conn)
   rc = css_receive_request (conn, &request_id, &request, &buffer_size);
   if (rc == NO_ERRORS)
     {
+      
+      MASTER_ER_LOG_DEBUG (ARG_FILE_LINE, " ++ css_process_info_request. request:%d , request_id:%hd .\n", request, request_id);
+
       if (buffer_size && css_receive_data (conn, request_id, &buffer, &buffer_size, -1) != NO_ERRORS)
 	{
 	  if (buffer != NULL)

@@ -538,6 +538,8 @@ css_process_master_request (SOCKET master_fd)
   r = 1;
   request = (int) css_get_master_request (master_fd);
 
+  _er_log_debug (ARG_FILE_LINE, " ++ css_process_master_request : request:%d\n", request);
+
   switch (request)
     {
     case SERVER_START_NEW_CLIENT:
