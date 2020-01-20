@@ -520,8 +520,6 @@ void dump_sys_limits (void)
     }
 
     util_log_write_str (str);
-
-    return 0;
 }
 /*
  * main() - a service utility's entry point
