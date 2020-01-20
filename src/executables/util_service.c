@@ -61,6 +61,8 @@
 typedef int pid_t;
 #endif
 
+const int fork_retry_attempts = 5;
+
 typedef enum
 {
   SERVICE = 0,
@@ -870,6 +872,7 @@ proc_execute_internal (const char *file, const char *args[], bool wait_child, bo
 {
   pid_t pid, tmp;
   char executable_path[PATH_MAX];
+  int retry_cnt = fork_retry_attempts;
 
   if (out_pid)
     {
@@ -888,6 +891,7 @@ proc_execute_internal (const char *file, const char *args[], bool wait_child, bo
       signal (SIGCHLD, SIG_IGN);
     }
 
+fork_retry:
   util_log_write_str (" ++ before fork in parent process, file:%s, args: [%s %s], wait_child:%d\n", 
     file, 
     args[0] ? args[0] : "NULL", 
@@ -900,6 +904,14 @@ proc_execute_internal (const char *file, const char *args[], bool wait_child, bo
       util_log_write_str ( "fork returned -1\n");
       fprintf (stdout, "fork returned -1\n");
       fprintf (stderr, "fork returned -1\n");
+
+      if (retry_cnt > 0)
+        {
+          retry_cnt--;
+          sleep (fork_retry_attempts - retry_cnt);
+          util_log_write_str ( "fork failed retrying\n");
+          goto fork_retry;
+        }
       return ER_GENERIC_ERROR;
     }
   else if (pid == 0)
@@ -4633,11 +4645,23 @@ is_terminated_process (const int pid)
       return false;
     }
 #else /* WINDOWS */
+
+  int retry_cnt = fork_retry_attempts;
+
+retry_kill:
   if (kill (pid, 0) == -1)
     {
           util_log_write_str ("is_terminated_process pid:%d errno :%d\n", pid, errno);
 	  fprintf (stdout, "is_terminated_process errno :%d\n", errno );
 	  fprintf (stderr, "is_terminated_process errno :%d\n", errno );
+
+      if (retry_cnt > 0)
+      {
+        retry_cnt--;
+        sleep (fork_retry_attempts - retry_cnt);
+        util_log_write_str ("    ++ kill -9 failed, retrying\n");
+        got retry_kill;
+      }
       return true;
     }
   else
