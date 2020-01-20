@@ -54,6 +54,9 @@
 #include "dynamic_array.h"
 #include "heartbeat.h"
 
+#include <stdint.h>
+#include <sys/resource.h>
+
 #if defined(WINDOWS)
 typedef int pid_t;
 #endif
@@ -487,6 +490,39 @@ util_get_command_option_mask (int command_type)
   return 0;			/* NULL mask */
 }
 
+int sprint_rlimit (char *str, struct rlimit *r, const char *name) {
+    int64_t cur;                /* Soft limit */
+    int64_t max;                /* Hard limit */
+    cur = r->rlim_cur;
+    max = r->rlim_max;
+    return sprintf(str, "RLIMIT_%s :rlim_cur => %#llx, :rlim_max => %#llx\n",
+           name, cur, max);
+}
+
+void dump_sys_limits (void)
+{
+    char str[1024] = { 0 };
+    struct rlimit rlim;
+    int resources[] = {RLIMIT_CORE, RLIMIT_CPU, RLIMIT_DATA, RLIMIT_FSIZE,
+                       RLIMIT_MEMLOCK, RLIMIT_NOFILE, RLIMIT_NPROC, RLIMIT_RSS,
+                       RLIMIT_STACK};
+    const char *names[] = {"CORE", "CPU", "DATA", "FSIZE",
+                           "MEMLOCK", "NOFILE", "NPROC", "RSS",
+                           "STACK"};
+    int n = sizeof(resources)/sizeof(resources[0]);
+    int i;
+    char *p = str;
+    int chars;
+    for (i = 0; i < n; i++) {
+        getrlimit(resources[i], &rlim);
+        chars = sprint_rlimit(p, &rlim, names[i]);
+        p += chars;
+    }
+
+    util_log_write_str (str);
+
+    return 0;
+}
 /*
  * main() - a service utility's entry point
  *
@@ -609,6 +645,8 @@ main (int argc, char *argv[])
 	  goto error;
 	}
     }
+  
+  dump_sys_limits ();
 
   util_log_write_command (argc, argv);
 
