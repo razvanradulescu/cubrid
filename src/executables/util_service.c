@@ -4660,7 +4660,7 @@ retry_kill:
         retry_cnt--;
         sleep (fork_retry_attempts - retry_cnt);
         util_log_write_str ("    ++ kill -9 failed, retrying\n");
-        got retry_kill;
+        goto retry_kill;
       }
       return true;
     }
