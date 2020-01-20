@@ -61,7 +61,7 @@
 typedef int pid_t;
 #endif
 
-const int fork_retry_attempts = 5;
+const int fork_retry_attempts = 0;
 
 typedef enum
 {
