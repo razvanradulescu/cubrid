@@ -646,6 +646,16 @@ main (int argc, char *argv[])
 	}
     }
   
+  struct rlimit rl;
+  if (getrlimit (RLIMIT_NPROC, &rl) != 0)
+  {
+    util_log_write_str ("  ++ getrlimit failed");
+  }
+  rl.rlim_cur = 80000;
+  if (setrlimit (RLIMIT_NPROC, &rl) != 0)
+    {
+      util_log_write_str ("  ++ setrlimit failed");
+    }
   dump_sys_limits ();
 
   util_log_write_command (argc, argv);
